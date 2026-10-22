@@ -7,6 +7,294 @@ const apiHeaders = {
 };
 
 // =============================================================
+// GESTIONNAIRE DE SÉCURITÉ & AUTHENTIFICATION (Dunkirk IT)
+// =============================================================
+window.togglePasswordVisibility = function(inputId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  input.type = input.type === "password" ? "text" : "password";
+};
+
+const DEFAULT_AUTH_CONFIG = {
+  requireAuth: true,
+  users: {
+    "Christophe": {
+      role: "admin",
+      displayName: "Christophe",
+      title: "Administrateur & Fondateur",
+      avatar: "👨",
+      password: "1234",
+      lastLogin: null
+    },
+    "Dorianne": {
+      role: "user",
+      displayName: "Dorianne",
+      title: "Utilisatrice Planning",
+      avatar: "👩",
+      password: "1234",
+      lastLogin: null
+    }
+  },
+  auditLog: [
+    { timestamp: new Date().toISOString(), user: "Système", action: "Module d'authentification Dunkirk IT initialisé" }
+  ]
+};
+
+function loadAuthConfig() {
+  const data = localStorage.getItem("dunkirk_auth_config_v1");
+  if (!data) {
+    saveAuthConfig(DEFAULT_AUTH_CONFIG);
+    return DEFAULT_AUTH_CONFIG;
+  }
+  try {
+    const parsed = JSON.parse(data);
+    if (!parsed.users || !parsed.users.Christophe || !parsed.users.Dorianne) {
+      const merged = { ...DEFAULT_AUTH_CONFIG, ...parsed };
+      saveAuthConfig(merged);
+      return merged;
+    }
+    return parsed;
+  } catch (e) {
+    return DEFAULT_AUTH_CONFIG;
+  }
+}
+
+function saveAuthConfig(cfg) {
+  localStorage.setItem("dunkirk_auth_config_v1", JSON.stringify(cfg));
+}
+
+function addAuditLog(action, user = null) {
+  const cfg = loadAuthConfig();
+  const userName = user || (window.__currentUser?.displayName || "Anonyme");
+  if (!cfg.auditLog) cfg.auditLog = [];
+  cfg.auditLog.unshift({
+    timestamp: new Date().toISOString(),
+    user: userName,
+    action: action
+  });
+  if (cfg.auditLog.length > 50) cfg.auditLog = cfg.auditLog.slice(0, 50);
+  saveAuthConfig(cfg);
+}
+
+let currentUser = null;
+let selectedAuthUser = "Christophe";
+
+function initAuth() {
+  const cfg = loadAuthConfig();
+  const sessionData = localStorage.getItem("dunkirk_session_v1");
+
+  if (sessionData) {
+    try {
+      const sess = JSON.parse(sessionData);
+      if (sess && sess.user && cfg.users[sess.user]) {
+        setLoggedInUser(sess.user, false);
+        return;
+      }
+    } catch(e) {}
+  }
+
+  if (!cfg.requireAuth) {
+    setLoggedInUser("Christophe", false);
+    return;
+  }
+
+  showAuthOverlay();
+}
+
+function showAuthOverlay() {
+  const overlay = document.getElementById("auth-overlay");
+  if (overlay) overlay.classList.remove("hidden");
+  selectAuthUser(selectedAuthUser || "Christophe");
+  const pwdInput = document.getElementById("auth-password-input");
+  if (pwdInput) {
+    pwdInput.value = "";
+    setTimeout(() => pwdInput.focus(), 100);
+  }
+  const errorMsg = document.getElementById("auth-error-msg");
+  if (errorMsg) errorMsg.classList.add("hidden");
+}
+
+function hideAuthOverlay() {
+  const overlay = document.getElementById("auth-overlay");
+  if (overlay) overlay.classList.add("hidden");
+}
+
+function selectAuthUser(userName) {
+  selectedAuthUser = userName;
+  const btnChristophe = document.getElementById("auth-select-christophe");
+  const btnDorianne = document.getElementById("auth-select-dorianne");
+  const labelSelected = document.getElementById("auth-selected-name");
+
+  if (userName === "Christophe") {
+    btnChristophe?.classList.add("active");
+    btnDorianne?.classList.remove("active");
+    if (labelSelected) labelSelected.textContent = "Christophe (Admin)";
+  } else {
+    btnDorianne?.classList.add("active");
+    btnChristophe?.classList.remove("active");
+    if (labelSelected) labelSelected.textContent = "Dorianne";
+  }
+
+  const pwdInput = document.getElementById("auth-password-input");
+  if (pwdInput) {
+    pwdInput.value = "";
+    pwdInput.focus();
+  }
+  const errorMsg = document.getElementById("auth-error-msg");
+  if (errorMsg) errorMsg.classList.add("hidden");
+}
+
+function attemptLogin(password, rememberMe = true) {
+  const cfg = loadAuthConfig();
+  const userData = cfg.users[selectedAuthUser];
+
+  if (!userData) return false;
+
+  if (password === userData.password) {
+    userData.lastLogin = new Date().toISOString();
+    saveAuthConfig(cfg);
+
+    if (rememberMe) {
+      localStorage.setItem("dunkirk_session_v1", JSON.stringify({
+        user: selectedAuthUser,
+        loggedInAt: Date.now()
+      }));
+    } else {
+      localStorage.removeItem("dunkirk_session_v1");
+    }
+
+    setLoggedInUser(selectedAuthUser, true);
+    addAuditLog(`Connexion réussie de ${selectedAuthUser}`, selectedAuthUser);
+    hideAuthOverlay();
+    playSound('fanfare');
+    launchConfetti();
+    showToast(`Bienvenue ${userData.displayName} ! ✨`, userData.avatar);
+    return true;
+  } else {
+    const card = document.getElementById("auth-card");
+    const errorMsg = document.getElementById("auth-error-msg");
+    playSound('click');
+    if (card) {
+      card.classList.remove("auth-shake");
+      void card.offsetWidth;
+      card.classList.add("auth-shake");
+    }
+    if (errorMsg) {
+      errorMsg.textContent = "Mot de passe incorrect. Réessayez (par défaut : 1234)";
+      errorMsg.classList.remove("hidden");
+    }
+    addAuditLog(`Échec de connexion (mot de passe erroné) pour ${selectedAuthUser}`, selectedAuthUser);
+    return false;
+  }
+}
+
+function setLoggedInUser(userName, notify = false) {
+  const cfg = loadAuthConfig();
+  const userData = cfg.users[userName] || cfg.users["Christophe"];
+
+  currentUser = {
+    name: userName,
+    ...userData
+  };
+  window.__currentUser = currentUser;
+
+  const headerAvatar = document.getElementById("header-avatar");
+  const headerName = document.getElementById("header-user-label");
+  const headerRole = document.getElementById("header-role-tag");
+
+  if (headerAvatar) headerAvatar.textContent = userData.avatar;
+  if (headerName) headerName.textContent = userData.displayName;
+  if (headerRole) {
+    headerRole.textContent = userData.role === "admin" ? "Admin" : "Utilisatrice";
+    headerRole.className = `header-role-tag ${userData.role === "admin" ? "" : "user"}`;
+  }
+
+  const adminNavBtn = document.getElementById("bottom-nav-admin");
+  if (adminNavBtn) {
+    if (userData.role === "admin") {
+      adminNavBtn.style.display = "flex";
+    } else {
+      adminNavBtn.style.display = "none";
+    }
+  }
+
+  const currentActiveTab = document.querySelector(".tab-view.active")?.id;
+  if (currentActiveTab === "view-admin" && userData.role !== "admin") {
+    app.switchTab("planning");
+  }
+
+  if (userData.role === "admin") {
+    renderAdminDashboard();
+  }
+}
+
+function lockCurrentSession() {
+  localStorage.removeItem("dunkirk_session_v1");
+  currentUser = null;
+  window.__currentUser = null;
+  playSound('click');
+  showToast("Session verrouillée 🔒", "🛡️");
+  showAuthOverlay();
+}
+
+function renderAdminDashboard() {
+  const cfg = loadAuthConfig();
+  const appointments = window.__appointments || loadLocalAppointments();
+
+  const toggleAuth = document.getElementById("admin-toggle-require-auth");
+  if (toggleAuth) {
+    toggleAuth.checked = cfg.requireAuth !== false;
+  }
+
+  const total = appointments.length;
+  const countDorianne = appointments.filter(a => a.user === "Dorianne").length;
+  const countChristophe = appointments.filter(a => a.user === "Christophe").length;
+  const countBoth = appointments.filter(a => a.user === "Tous les deux" || a.user === "Les deux").length;
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  const countUpcoming = appointments.filter(a => a.date >= todayStr).length;
+  const countPast = appointments.filter(a => a.date < todayStr).length;
+  const countGps = appointments.filter(a => a.latitude && a.longitude).length;
+
+  const elTot = document.getElementById("admin-kpi-total");
+  const elDori = document.getElementById("admin-kpi-dorianne");
+  const elChris = document.getElementById("admin-kpi-christophe");
+  const elBoth = document.getElementById("admin-kpi-both");
+  const elUpc = document.getElementById("admin-kpi-upcoming");
+  const elPast = document.getElementById("admin-kpi-past");
+  const elGps = document.getElementById("admin-kpi-gps");
+
+  if (elTot) elTot.textContent = total;
+  if (elDori) elDori.textContent = countDorianne;
+  if (elChris) elChris.textContent = countChristophe;
+  if (elBoth) elBoth.textContent = countBoth;
+  if (elUpc) elUpc.textContent = countUpcoming;
+  if (elPast) elPast.textContent = countPast;
+  if (elGps) elGps.textContent = countGps;
+
+  const auditList = document.getElementById("admin-audit-log-list");
+  if (auditList) {
+    auditList.innerHTML = "";
+    const logs = cfg.auditLog || [];
+    if (logs.length === 0) {
+      auditList.innerHTML = `<div style="color:var(--text-muted); padding:0.5rem; text-align:center;">Aucune activité récente.</div>`;
+    } else {
+      logs.forEach(log => {
+        const item = document.createElement("div");
+        item.className = "audit-item";
+        const dateObj = new Date(log.timestamp);
+        const timeFormatted = isNaN(dateObj.getTime()) ? "--:--" : `${String(dateObj.getHours()).padStart(2, "0")}:${String(dateObj.getMinutes()).padStart(2, "0")}`;
+        item.innerHTML = `
+          <span class="audit-time">${timeFormatted}</span>
+          <span><strong>${log.user}:</strong> ${log.action}</span>
+        `;
+        auditList.appendChild(item);
+      });
+    }
+  }
+}
+
+// =============================================================
 // SYNTHÉTISEUR AUDIO WEB API (Effets Fun Dunkirk IT 100% Hors-Ligne)
 // =============================================================
 let audioCtx = null;
@@ -851,6 +1139,32 @@ function closeDetailModal() {
 // =============================================================
 let isEditingMode = false;
 
+// Gestion visuelle & interactive des boutons radio utilisateur
+function updateUserRadioVisuals() {
+  document.querySelectorAll(".user-radio-chip").forEach(chip => {
+    const radio = chip.querySelector("input[name='rdv-user']");
+    if (radio && radio.checked) {
+      chip.classList.add("selected");
+    } else {
+      chip.classList.remove("selected");
+    }
+  });
+}
+
+function setupUserRadioChips() {
+  document.querySelectorAll(".user-radio-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const radio = chip.querySelector("input[name='rdv-user']");
+      if (radio) {
+        document.querySelectorAll("input[name='rdv-user']").forEach(r => r.checked = false);
+        radio.checked = true;
+        updateUserRadioVisuals();
+      }
+    });
+  });
+  updateUserRadioVisuals();
+}
+
 function editCurrentAppointment() {
   const appt = window.__selectedAppointment;
   if (!appt) return;
@@ -862,9 +1176,21 @@ function editCurrentAppointment() {
   document.getElementById("form-heading").textContent = "Modifier le Rendez-vous";
   document.getElementById("edit-rdv-id").value = String(appt.id);
 
-  // Radio user
-  const userRadio = document.querySelector(`input[name="rdv-user"][value="${appt.user}"]`);
-  if (userRadio) userRadio.checked = true;
+  // Normalisation rigoureuse de l'utilisateur (gère 'Tous les deux', 'Les deux', 'Christophe', 'Dorianne')
+  let targetUser = (appt.user || "Dorianne").trim();
+  if (targetUser === "Les deux" || targetUser === "Tous" || targetUser.toLowerCase() === "tous les deux") {
+    targetUser = "Tous les deux";
+  } else if (targetUser.toLowerCase() === "christophe") {
+    targetUser = "Christophe";
+  } else {
+    targetUser = "Dorianne";
+  }
+
+  // Décocher tous les radios puis cocher précisément celui de l'utilisateur
+  document.querySelectorAll("input[name='rdv-user']").forEach(r => {
+    r.checked = (r.value === targetUser);
+  });
+  updateUserRadioVisuals();
 
   // Radio style
   const styleRadio = document.querySelector(`input[name="rdv-style"][value="${appt.categorie}"]`);
@@ -930,7 +1256,7 @@ function resetForm() {
     dateInput.max = "2099-12-31";
   }
 
-  // CORRECTION BUG: Toujours réinitialiser l'heure (la condition !timeInput.value bloquait la remise à zéro après modif)
+  // Toujours réinitialiser l'heure
   const timeInput = document.getElementById("rdv-time");
   if (timeInput) {
     const now = new Date();
@@ -944,9 +1270,12 @@ function resetForm() {
   const lonInput = document.getElementById("rdv-lon");
   if (lonInput) lonInput.value = "2.3768";
 
-  // Réinitialiser les boutons radio
-  const defaultUser = document.querySelector("input[name='rdv-user'][value='Dorianne']");
-  if (defaultUser) defaultUser.checked = true;
+  // Réinitialiser les boutons radio sur Dorianne par défaut
+  document.querySelectorAll("input[name='rdv-user']").forEach(r => {
+    r.checked = (r.value === "Dorianne");
+  });
+  updateUserRadioVisuals();
+
   const firstStyle = document.querySelector("input[name='rdv-style']");
   if (firstStyle) firstStyle.checked = true;
 
@@ -958,8 +1287,15 @@ async function submitForm(e) {
   e.preventDefault();
   const id = document.getElementById("edit-rdv-id").value.trim();
 
+  // Récupération fiable de l'utilisateur sélectionné
+  let selectedUser = "Dorianne";
+  const checkedRadio = document.querySelector("input[name='rdv-user']:checked");
+  if (checkedRadio && checkedRadio.value) {
+    selectedUser = checkedRadio.value;
+  }
+
   const data = {
-    user: document.querySelector("input[name='rdv-user']:checked")?.value || "Dorianne",
+    user: selectedUser,
     categorie: document.querySelector("input[name='rdv-style']:checked")?.value || "Co-transportage",
     titre: document.getElementById("rdv-title").value.trim(),
     date: document.getElementById("rdv-date").value || new Date().toISOString().split("T")[0],
@@ -1726,10 +2062,187 @@ document.addEventListener("DOMContentLoaded", () => {
     showToast("Synchronisation Baserow terminée !", "🔄");
   });
 
+  // 13. Authentification & Événements Back-Office
+  document.getElementById("btn-user-profile")?.addEventListener("click", () => {
+    playSound('click');
+    if (confirm("Voulez-vous verrouiller la session actuelle et changer d'utilisateur ?")) {
+      lockCurrentSession();
+    }
+  });
+
+  document.getElementById("admin-lock-session-btn")?.addEventListener("click", () => {
+    lockCurrentSession();
+  });
+
+  document.getElementById("auth-select-christophe")?.addEventListener("click", () => {
+    playSound('click');
+    selectAuthUser("Christophe");
+  });
+
+  document.getElementById("auth-select-dorianne")?.addEventListener("click", () => {
+    playSound('click');
+    selectAuthUser("Dorianne");
+  });
+
+  document.getElementById("auth-form")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const pwd = document.getElementById("auth-password-input")?.value.trim() || "";
+    const rem = document.getElementById("auth-remember-me")?.checked ?? true;
+    attemptLogin(pwd, rem);
+  });
+
+  // Bascule exigence mot de passe dans le Back-Office
+  document.getElementById("admin-toggle-require-auth")?.addEventListener("change", (e) => {
+    const cfg = loadAuthConfig();
+    cfg.requireAuth = e.target.checked;
+    saveAuthConfig(cfg);
+    playSound('click');
+    addAuditLog(`Exigence de mot de passe ${cfg.requireAuth ? "activée" : "désactivée"}`);
+    showToast(`Sécurité : mot de passe ${cfg.requireAuth ? "activé" : "désactivé"} au démarrage`, "🔐");
+  });
+
+  // Sauvegarde mot de passe Christophe
+  document.getElementById("btn-save-pwd-christophe")?.addEventListener("click", () => {
+    const newPwd = document.getElementById("admin-pwd-christophe")?.value.trim();
+    if (!newPwd) {
+      alert("Veuillez saisir un mot de passe.");
+      return;
+    }
+    const cfg = loadAuthConfig();
+    cfg.users["Christophe"].password = newPwd;
+    saveAuthConfig(cfg);
+    playSound('carillon');
+    addAuditLog("Mot de passe administrateur Christophe mis à jour", "Christophe");
+    document.getElementById("admin-pwd-christophe").value = "";
+    const fb = document.getElementById("admin-pwd-feedback");
+    if (fb) {
+      fb.className = "feedback-msg success";
+      fb.textContent = "✅ Mot de passe Christophe mis à jour avec succès !";
+      fb.classList.remove("hidden");
+      setTimeout(() => fb.classList.add("hidden"), 3500);
+    }
+    showToast("Mot de passe Christophe enregistré !", "🔒");
+    renderAdminDashboard();
+  });
+
+  // Sauvegarde mot de passe Dorianne
+  document.getElementById("btn-save-pwd-dorianne")?.addEventListener("click", () => {
+    const newPwd = document.getElementById("admin-pwd-dorianne")?.value.trim();
+    if (!newPwd) {
+      alert("Veuillez saisir un mot de passe pour Dorianne.");
+      return;
+    }
+    const cfg = loadAuthConfig();
+    cfg.users["Dorianne"].password = newPwd;
+    saveAuthConfig(cfg);
+    playSound('carillon');
+    addAuditLog("Mot de passe de Dorianne modifié par l'administrateur", "Christophe");
+    document.getElementById("admin-pwd-dorianne").value = "";
+    const fb = document.getElementById("admin-pwd-feedback");
+    if (fb) {
+      fb.className = "feedback-msg success";
+      fb.textContent = "✅ Mot de passe de Dorianne mis à jour avec succès !";
+      fb.classList.remove("hidden");
+      setTimeout(() => fb.classList.add("hidden"), 3500);
+    }
+    showToast("Mot de passe Dorianne enregistré !", "🔒");
+    renderAdminDashboard();
+  });
+
+  // Réinitialisation mot de passe Dorianne à 1234
+  document.getElementById("btn-reset-pwd-dorianne")?.addEventListener("click", () => {
+    if (confirm("Réinitialiser le mot de passe de Dorianne à '1234' ?")) {
+      const cfg = loadAuthConfig();
+      cfg.users["Dorianne"].password = "1234";
+      saveAuthConfig(cfg);
+      playSound('click');
+      addAuditLog("Mot de passe de Dorianne réinitialisé à 1234", "Christophe");
+      const fb = document.getElementById("admin-pwd-feedback");
+      if (fb) {
+        fb.className = "feedback-msg success";
+        fb.textContent = "✅ Mot de passe de Dorianne réinitialisé à '1234'.";
+        fb.classList.remove("hidden");
+        setTimeout(() => fb.classList.add("hidden"), 3500);
+      }
+      showToast("Mot de passe Dorianne remis à 1234", "🔄");
+      renderAdminDashboard();
+    }
+  });
+
+  // Effacer l'historique d'audit
+  document.getElementById("btn-clear-audit")?.addEventListener("click", () => {
+    if (confirm("Effacer l'historique d'activité du journal ?")) {
+      const cfg = loadAuthConfig();
+      cfg.auditLog = [{ timestamp: new Date().toISOString(), user: "Christophe", action: "Journal d'audit effacé" }];
+      saveAuthConfig(cfg);
+      renderAdminDashboard();
+      showToast("Journal effacé", "🧹");
+    }
+  });
+
+  // Purge des RDV passés (> 30 jours)
+  document.getElementById("btn-admin-purge-old")?.addEventListener("click", () => {
+    const list = loadLocalAppointments();
+    const thresholdDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    const initialCount = list.length;
+    const kept = list.filter(a => a.date >= thresholdDate);
+    const removedCount = initialCount - kept.length;
+
+    if (removedCount === 0) {
+      alert("Aucun rendez-vous antérieur à 30 jours n'a été trouvé.");
+      return;
+    }
+
+    if (confirm(`Purger ${removedCount} ancien(s) rendez-vous archivé(s) ?`)) {
+      saveLocalAppointments(kept);
+      window.__appointments = kept;
+      renderAppointments(kept);
+      updateStats(kept);
+      renderAdminDashboard();
+      addAuditLog(`Purge de ${removedCount} rendez-vous anciens`, "Christophe");
+      playSound('click');
+      showToast(`${removedCount} rendez-vous purgés avec succès !`, "🧹");
+    }
+  });
+
+  // Export complet admin
+  document.getElementById("btn-admin-full-export")?.addEventListener("click", () => {
+    const exportData = {
+      exportedAt: new Date().toISOString(),
+      exportedBy: "Christophe (Admin)",
+      appointments: loadLocalAppointments(),
+      styles: loadCustomStyles()
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `dunkirk-rdv-admin-backup-${new Date().toISOString().split("T")[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    addAuditLog("Sauvegarde admin complète exportée", "Christophe");
+    playSound('fanfare');
+    showToast("Sauvegarde admin complète téléchargée !", "💾");
+  });
+
+  // Forcer synchronisation Cloud Baserow
+  document.getElementById("btn-admin-force-sync")?.addEventListener("click", async () => {
+    playSound('click');
+    showToast("Synchronisation Cloud en cours...", "🔄");
+    await loadAndRender();
+    renderAdminDashboard();
+    addAuditLog("Synchronisation Cloud Baserow forcée", "Christophe");
+    showToast("Synchronisation Cloud réussie !", "⚡");
+  });
+
   // Initialisations
+  setupUserRadioChips();
   setupAddressAutocomplete();
   renderDynamicStyles();
   loadAndRender();
+
+  // Initialisation Authentification & Profil
+  initAuth();
 
   // Date du formulaire par défaut
   resetForm();
@@ -1758,6 +2271,13 @@ document.addEventListener("DOMContentLoaded", () => {
 // Exportation globale pour les onclick inline
 export const app = {
   switchTab: (name) => {
+    // Si Dorianne tente d'accéder au Back-Office
+    if (name === "admin" && window.__currentUser && window.__currentUser.role !== "admin") {
+      playSound('click');
+      showToast("Accès restreint : Réservé à l'administrateur Christophe 🔒", "🛡️");
+      return;
+    }
+
     document.querySelectorAll(".tab-view").forEach(el => el.classList.remove("active"));
     const target = document.getElementById(`view-${name}`);
     if (target) target.classList.add("active");
@@ -1765,6 +2285,10 @@ export const app = {
     document.querySelectorAll(".nav-item").forEach(el => el.classList.remove("active"));
     const nav = document.querySelector(`.nav-item[data-tab='${name}']`);
     if (nav) nav.classList.add("active");
+
+    if (name === "admin") {
+      renderAdminDashboard();
+    }
 
     if (name === "guidance" && mapInstance) {
       setTimeout(() => mapInstance.invalidateSize(), 150);
@@ -1778,6 +2302,9 @@ export const app = {
     const appt = (window.__appointments || loadLocalAppointments()).find(a => a.id == id);
     if (appt) selectAndGuide(appt);
   },
+  lockCurrentSession,
+  showAuthOverlay,
+  renderAdminDashboard,
   cancelEdit,
   launchConfetti,
   playSound,
