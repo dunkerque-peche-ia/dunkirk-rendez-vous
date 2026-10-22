@@ -1902,6 +1902,13 @@ input:checked + .slider:before {
   display: none;
 }
 
+.nav-badge.planning-badge {
+  background: var(--dk-gold);
+  color: var(--dk-dark);
+  font-weight: 900;
+  box-shadow: 0 0 10px rgba(221, 167, 39, 0.7);
+}
+
 /* =============================================================
    Modal Détail Rendez-vous
    ============================================================= */
