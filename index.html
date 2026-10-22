@@ -977,7 +977,11 @@ body::before {
 }
 
 .user-radio-chip input[type="radio"] {
-  display: none;
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
 }
 
 .chip-content {
@@ -995,21 +999,24 @@ body::before {
   transition: var(--transition-bounce);
 }
 
-.user-radio-chip input:checked + .chip-content.dorianne-theme {
+.user-radio-chip input:checked + .chip-content.dorianne-theme,
+.user-radio-chip.selected .chip-content.dorianne-theme {
   background: var(--color-dorianne-bg);
   border-color: var(--color-dorianne);
   color: #F472B6;
   box-shadow: 0 0 15px rgba(236, 72, 153, 0.4);
 }
 
-.user-radio-chip input:checked + .chip-content.christophe-theme {
+.user-radio-chip input:checked + .chip-content.christophe-theme,
+.user-radio-chip.selected .chip-content.christophe-theme {
   background: var(--color-christophe-bg);
   border-color: var(--color-christophe);
   color: #7DD3FC;
   box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
 }
 
-.user-radio-chip input:checked + .chip-content.both-theme {
+.user-radio-chip input:checked + .chip-content.both-theme,
+.user-radio-chip.selected .chip-content.both-theme {
   background: rgba(221, 167, 39, 0.2);
   border-color: var(--dk-gold);
   color: var(--dk-gold);
@@ -1028,7 +1035,11 @@ body::before {
 }
 
 .style-radio-label input {
-  display: none;
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
 }
 
 .style-radio-btn {
@@ -2336,6 +2347,475 @@ input:checked + .slider:before {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
   }
+/* =============================================================
+   MODULE D'AUTHENTIFICATION SÉCURISÉE & BACK-OFFICE ADMIN (Dunkirk IT)
+   ============================================================= */
+
+/* Pastille Profil dans le Header */
+.header-profile-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(7, 22, 44, 0.85);
+  border: 1px solid var(--border-gold);
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-light);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.header-profile-badge:hover {
+  background: rgba(221, 167, 39, 0.2);
+  transform: translateY(-1px);
+}
+
+.header-role-tag {
+  background: rgba(221, 167, 39, 0.25);
+  color: var(--dk-gold);
+  border: 1px solid rgba(221, 167, 39, 0.4);
+  font-size: 0.65rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--radius-full);
+  font-weight: 800;
+}
+
+.header-role-tag.user {
+  background: var(--color-dorianne-bg);
+  color: #F472B6;
+  border-color: rgba(236, 72, 153, 0.4);
+}
+
+/* Écran plein d'authentification / Verrouillage */
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(11, 34, 68, 0.98) 0%, rgba(3, 12, 24, 0.99) 100%);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.2rem;
+  animation: fadeIn 0.35s ease;
+}
+
+.auth-overlay.hidden {
+  display: none !important;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  background: rgba(7, 22, 44, 0.92);
+  border: 1.5px solid var(--dk-gold);
+  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.8), 0 0 35px rgba(221, 167, 39, 0.25);
+  border-radius: var(--radius-lg);
+  padding: 1.8rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--dk-gold), #FDE68A, #38BDF8, var(--color-dorianne), var(--dk-gold));
+}
+
+.auth-brand-shield {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 0.9rem;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(221, 167, 39, 0.25) 0%, rgba(7, 22, 44, 0.8) 100%);
+  border: 2px solid var(--dk-gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 25px rgba(221, 167, 39, 0.4);
+}
+
+.auth-title {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: var(--text-light);
+  letter-spacing: -0.01em;
+  margin-bottom: 0.3rem;
+}
+
+.auth-subtitle {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 1.4rem;
+}
+
+.auth-user-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+
+.auth-user-btn {
+  background: rgba(11, 34, 68, 0.6);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 0.5rem;
+  cursor: pointer;
+  transition: var(--transition-bounce);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-light);
+}
+
+.auth-user-btn .auth-avatar {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.auth-user-btn .auth-user-name {
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.auth-user-btn .auth-user-role {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.auth-user-btn.active.christophe-auth {
+  border-color: #38BDF8;
+  background: rgba(56, 189, 248, 0.15);
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.35);
+}
+
+.auth-user-btn.active.christophe-auth .auth-user-name {
+  color: #7DD3FC;
+}
+
+.auth-user-btn.active.dorianne-auth {
+  border-color: #EC4899;
+  background: var(--color-dorianne-bg);
+  box-shadow: 0 0 20px rgba(236, 72, 153, 0.35);
+}
+
+.auth-user-btn.active.dorianne-auth .auth-user-name {
+  color: #F472B6;
+}
+
+.auth-password-wrap {
+  position: relative;
+  margin-bottom: 0.9rem;
+  text-align: left;
+}
+
+.auth-password-wrap label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-light);
+  margin-bottom: 0.4rem;
+}
+
+.auth-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.auth-input-container input {
+  width: 100%;
+  padding-right: 2.8rem;
+}
+
+.auth-pwd-toggle {
+  position: absolute;
+  right: 0.6rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0.2rem;
+}
+
+.auth-remember-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 1.25rem;
+}
+
+.auth-remember-row label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+
+.auth-error-msg {
+  color: #F87171;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-bottom: 0.85rem;
+}
+
+.auth-shake {
+  animation: authShake 0.4s ease;
+}
+
+@keyframes authShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+/* =============================================================
+   STYLES DU BACK-OFFICE ADMINISTRATEUR (CHRISTOPHE)
+   ============================================================= */
+.admin-container {
+  padding: 1rem;
+  padding-bottom: 5rem;
+}
+
+.admin-hero-banner {
+  background: linear-gradient(135deg, rgba(11, 34, 68, 0.95) 0%, rgba(7, 22, 44, 0.95) 100%);
+  border: 1.5px solid var(--dk-gold);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(221, 167, 39, 0.2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.admin-hero-content {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.admin-shield-icon {
+  font-size: 2.2rem;
+  background: rgba(221, 167, 39, 0.2);
+  border: 1px solid var(--dk-gold);
+  border-radius: var(--radius-md);
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: var(--dk-gold-glow);
+}
+
+.admin-hero-titles h2 {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #FFFFFF;
+  margin-bottom: 0.2rem;
+}
+
+.admin-hero-titles p {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.admin-hero-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.admin-grid-2col {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (min-width: 680px) {
+  .admin-grid-2col {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.admin-card {
+  background: rgba(7, 22, 44, 0.85);
+  border: 1px solid rgba(221, 167, 39, 0.3);
+  border-radius: var(--radius-md);
+  padding: 1.2rem;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.admin-card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-light);
+  margin-bottom: 0.9rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 0.6rem;
+}
+
+.admin-user-subcard {
+  background: rgba(11, 34, 68, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  padding: 0.85rem;
+  margin-bottom: 0.85rem;
+}
+
+.admin-user-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+
+.admin-user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--text-light);
+}
+
+.admin-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.82rem;
+  color: var(--text-light);
+}
+
+/* Switch toggle iOS style */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider-switch {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: rgba(255, 255, 255, 0.2);
+  transition: 0.3s;
+  border-radius: 24px;
+}
+
+.slider-switch:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+.toggle-switch input:checked + .slider-switch {
+  background-color: var(--dk-gold);
+}
+
+.toggle-switch input:checked + .slider-switch:before {
+  transform: translateX(20px);
+}
+
+/* KPI Stats cards in Admin */
+.admin-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 600px) {
+  .admin-stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.admin-stat-box {
+  background: rgba(11, 34, 68, 0.65);
+  border: 1px solid rgba(221, 167, 39, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.admin-stat-num {
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: var(--dk-gold);
+}
+
+.admin-stat-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* Audit log feed */
+.audit-log-list {
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+}
+
+.audit-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  background: rgba(11, 34, 68, 0.5);
+  border-left: 2px solid var(--dk-gold);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--text-light);
+}
+
+.audit-time {
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  white-space: nowrap;
 }
 </style>
 </head>
@@ -2361,6 +2841,13 @@ input:checked + .slider:before {
       </div>
       
       <div class="header-actions">
+        <!-- Bouton Profil Utilisateur Connecté & Verrouillage -->
+        <button id="btn-user-profile" class="header-profile-badge" title="Profil connecté - Cliquer pour changer ou verrouiller">
+          <span id="header-avatar">👨</span>
+          <span id="header-user-label">Christophe</span>
+          <span class="header-role-tag" id="header-role-tag">Admin</span>
+          <span class="lock-symbol">🔒</span>
+        </button>
         <!-- Bouton Confetti Fun -->
         <button id="quick-celebrate-btn" class="icon-btn fun-pulse" title="Explosion de confettis !">🎉</button>
         <!-- Indicateur Statut Cloud Dunkirk IT -->
@@ -2517,22 +3004,22 @@ input:checked + .slider:before {
             <div class="form-group">
               <label class="form-label">Pour qui est ce rendez-vous ? <span class="req">*</span></label>
               <div class="user-selector-radios">
-                <label class="user-radio-chip">
-                  <input type="radio" name="rdv-user" value="Dorianne" checked>
+                <label class="user-radio-chip selected" for="rdv-user-dorianne">
+                  <input type="radio" id="rdv-user-dorianne" name="rdv-user" value="Dorianne" checked>
                   <span class="chip-content dorianne-theme">
                     <span class="icon">👩</span>
                     <span>Dorianne</span>
                   </span>
                 </label>
-                <label class="user-radio-chip">
-                  <input type="radio" name="rdv-user" value="Christophe">
+                <label class="user-radio-chip" for="rdv-user-christophe">
+                  <input type="radio" id="rdv-user-christophe" name="rdv-user" value="Christophe">
                   <span class="chip-content christophe-theme">
                     <span class="icon">👨</span>
                     <span>Christophe</span>
                   </span>
                 </label>
-                <label class="user-radio-chip">
-                  <input type="radio" name="rdv-user" value="Tous les deux">
+                <label class="user-radio-chip" for="rdv-user-both">
+                  <input type="radio" id="rdv-user-both" name="rdv-user" value="Tous les deux">
                   <span class="chip-content both-theme">
                     <span class="icon">👫</span>
                     <span>Les deux</span>
@@ -2889,6 +3376,173 @@ input:checked + .slider:before {
         </div>
       </section>
 
+      <!-- ONGLET 6: BACK-OFFICE ADMINISTRATEUR (CHRISTOPHE) -->
+      <section id="view-admin" class="tab-view">
+        <div class="admin-container">
+          
+          <!-- Bannière SuperAdmin -->
+          <div class="admin-hero-banner">
+            <div class="admin-hero-content">
+              <div class="admin-shield-icon">🛡️</div>
+              <div class="admin-hero-titles">
+                <h2>Back-Office Administrateur</h2>
+                <p>Espace réservé à Christophe Gontier - Contrôle d'accès & Supervision Dunkirk IT</p>
+              </div>
+            </div>
+            <div class="admin-hero-actions">
+              <button id="admin-lock-session-btn" class="btn btn-outline-gold" style="font-size:0.8rem; padding:0.45rem 0.8rem;">
+                🔒 Verrouiller la session
+              </button>
+            </div>
+          </div>
+
+          <!-- Grille 2 Colonnes : Mots de Passe & Contrôle d'Accès -->
+          <div class="admin-grid-2col">
+            
+            <!-- Carte 1 : Sécurité & Mots de Passe -->
+            <div class="admin-card">
+              <div class="admin-card-title">
+                <span>🔐</span>
+                <span>Gestion des Mots de Passe & Accès</span>
+              </div>
+
+              <!-- Interrupteur Sécurité Globale -->
+              <div class="admin-switch-row" style="margin-bottom: 1rem;">
+                <div>
+                  <strong style="display:block;">Exiger un mot de passe à l'ouverture</strong>
+                  <span style="font-size:0.7rem; color:var(--text-muted);">Protection par profil lors du lancement de l'application</span>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="admin-toggle-require-auth" checked>
+                  <span class="slider-switch"></span>
+                </label>
+              </div>
+
+              <!-- Christophe (Admin) Mot de passe -->
+              <div class="admin-user-subcard">
+                <div class="admin-user-header">
+                  <div class="admin-user-info">
+                    <span style="font-size:1.2rem;">👨</span>
+                    <span>Christophe</span>
+                  </div>
+                  <span class="header-role-tag">SuperAdmin</span>
+                </div>
+                <div class="form-group" style="margin-bottom:0.5rem;">
+                  <label class="form-label" style="font-size:0.75rem;">Nouveau mot de passe Christophe</label>
+                  <div class="auth-input-container">
+                    <input type="password" id="admin-pwd-christophe" class="form-control" placeholder="Code PIN ou mot de passe secret" style="font-size:0.85rem; padding:0.45rem 0.65rem;">
+                    <button type="button" class="auth-pwd-toggle" onclick="togglePasswordVisibility('admin-pwd-christophe')">👁️</button>
+                  </div>
+                </div>
+                <button type="button" id="btn-save-pwd-christophe" class="btn btn-primary btn-block" style="font-size:0.78rem; padding:0.45rem;">
+                  💾 Mettre à jour mon mot de passe
+                </button>
+              </div>
+
+              <!-- Dorianne Mot de passe -->
+              <div class="admin-user-subcard">
+                <div class="admin-user-header">
+                  <div class="admin-user-info">
+                    <span style="font-size:1.2rem;">👩</span>
+                    <span>Dorianne</span>
+                  </div>
+                  <span class="header-role-tag user">Utilisatrice</span>
+                </div>
+                <div class="form-group" style="margin-bottom:0.5rem;">
+                  <label class="form-label" style="font-size:0.75rem;">Nouveau mot de passe Dorianne</label>
+                  <div class="auth-input-container">
+                    <input type="password" id="admin-pwd-dorianne" class="form-control" placeholder="Code PIN ou mot de passe" style="font-size:0.85rem; padding:0.45rem 0.65rem;">
+                    <button type="button" class="auth-pwd-toggle" onclick="togglePasswordVisibility('admin-pwd-dorianne')">👁️</button>
+                  </div>
+                </div>
+                <div style="display:flex; gap:0.4rem;">
+                  <button type="button" id="btn-save-pwd-dorianne" class="btn btn-primary" style="flex:1; font-size:0.78rem; padding:0.45rem;">
+                    💾 Changer son mot de passe
+                  </button>
+                  <button type="button" id="btn-reset-pwd-dorianne" class="btn btn-secondary" style="font-size:0.78rem; padding:0.45rem;" title="Remettre le mot de passe initial à 1234">
+                    🔄 Reset (1234)
+                  </button>
+                </div>
+              </div>
+
+              <div id="admin-pwd-feedback" class="feedback-msg hidden" style="margin-top:0.6rem;"></div>
+            </div>
+
+            <!-- Carte 2 : Métriques & Supervision Globale -->
+            <div class="admin-card">
+              <div class="admin-card-title">
+                <span>📊</span>
+                <span>Supervision de l'Agenda Partagé</span>
+              </div>
+
+              <div class="admin-stats-grid">
+                <div class="admin-stat-box">
+                  <div class="admin-stat-num" id="admin-kpi-total">0</div>
+                  <div class="admin-stat-label">Total RDV</div>
+                </div>
+                <div class="admin-stat-box">
+                  <div class="admin-stat-num" id="admin-kpi-dorianne" style="color:#EC4899;">0</div>
+                  <div class="admin-stat-label">👩 Dorianne</div>
+                </div>
+                <div class="admin-stat-box">
+                  <div class="admin-stat-num" id="admin-kpi-christophe" style="color:#38BDF8;">0</div>
+                  <div class="admin-stat-label">👨 Christophe</div>
+                </div>
+                <div class="admin-stat-box">
+                  <div class="admin-stat-num" id="admin-kpi-both" style="color:#F59E0B;">0</div>
+                  <div class="admin-stat-label">👫 Communs</div>
+                </div>
+              </div>
+
+              <div style="background: rgba(11, 34, 68, 0.5); border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 0.9rem;">
+                <div style="display:flex; justify-content:space-between; font-size:0.78rem; margin-bottom:0.4rem; color:var(--text-light);">
+                  <span>📅 Rendez-vous à venir :</span>
+                  <strong id="admin-kpi-upcoming" style="color:#10B981;">0</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:0.78rem; margin-bottom:0.4rem; color:var(--text-light);">
+                  <span>🕰️ Rendez-vous passés (archivés) :</span>
+                  <strong id="admin-kpi-past" style="color:var(--text-muted);">0</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:var(--text-light);">
+                  <span>🧭 Avec guidage GPS actif :</span>
+                  <strong id="admin-kpi-gps" style="color:var(--dk-gold);">0</strong>
+                </div>
+              </div>
+
+              <!-- Journal d'Audit & Sécurité -->
+              <div style="font-size:0.8rem; font-weight:700; color:var(--text-light); margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center;">
+                <span>📜 Journal d'activité & Sécurité</span>
+                <button type="button" id="btn-clear-audit" style="background:none; border:none; color:var(--text-muted); font-size:0.7rem; cursor:pointer;">Effacer</button>
+              </div>
+              <div id="admin-audit-log-list" class="audit-log-list">
+                <!-- Rempli dynamiquement -->
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Maintenance & Données Rapides -->
+          <div class="admin-card">
+            <div class="admin-card-title">
+              <span>🛠️</span>
+              <span>Outils de Maintenance Avancée</span>
+            </div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem;">
+              <button type="button" id="btn-admin-purge-old" class="btn btn-secondary" style="font-size:0.8rem;">
+                🧹 Purger les rendez-vous passés (> 30j)
+              </button>
+              <button type="button" id="btn-admin-full-export" class="btn btn-secondary" style="font-size:0.8rem;">
+                📥 Télécharger sauvegarde admin (.json)
+              </button>
+              <button type="button" id="btn-admin-force-sync" class="btn btn-outline-gold" style="font-size:0.8rem;">
+                ⚡ Forcer synchronisation Cloud Baserow
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
     </main>
 
     <!-- BARRE DE NAVIGATION INFÉRIEURE MOBILE (BOTTOM BAR) -->
@@ -2940,6 +3594,14 @@ input:checked + .slider:before {
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
         </svg>
         <span>Paramètres</span>
+      </button>
+
+      <!-- Bouton Back-Office réservé à Christophe -->
+      <button class="nav-item nav-item-admin" data-tab="admin" id="bottom-nav-admin" title="Back-Office Administrateur">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        </svg>
+        <span>Admin</span>
       </button>
     </nav>
 
@@ -3052,6 +3714,61 @@ input:checked + .slider:before {
       </div>
     </div>
 
+    <!-- ÉCRAN DE DÉVERROUILLAGE SÉCURISÉ / LOGIN (DUNKIRK IT) -->
+    <div id="auth-overlay" class="auth-overlay hidden">
+      <div class="auth-card" id="auth-card">
+        
+        <div class="auth-brand-shield">
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#DDA727" stroke-width="2.3">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
+        </div>
+
+        <h2 class="auth-title">DUNKIRK RDV</h2>
+        <p class="auth-subtitle">Accès sécurisé à l'agenda partagé</p>
+
+        <!-- Sélecteur d'utilisateur -->
+        <div class="auth-user-selector">
+          <button type="button" class="auth-user-btn christophe-auth active" id="auth-select-christophe">
+            <span class="auth-avatar">👨</span>
+            <span class="auth-user-name">Christophe</span>
+            <span class="auth-user-role">🛡️ Administrateur</span>
+          </button>
+          <button type="button" class="auth-user-btn dorianne-auth" id="auth-select-dorianne">
+            <span class="auth-avatar">👩</span>
+            <span class="auth-user-name">Dorianne</span>
+            <span class="auth-user-role">📅 Planning</span>
+          </button>
+        </div>
+
+        <!-- Formulaire de mot de passe -->
+        <form id="auth-form" onsubmit="return false;">
+          <div class="auth-password-wrap">
+            <label for="auth-password-input">Mot de passe pour <span id="auth-selected-name" style="color:var(--dk-gold);">Christophe</span></label>
+            <div class="auth-input-container">
+              <input type="password" id="auth-password-input" class="form-control" placeholder="Entrez votre mot de passe ou code PIN" required autofocus>
+              <button type="button" class="auth-pwd-toggle" id="auth-toggle-pwd-btn" onclick="togglePasswordVisibility('auth-password-input')">👁️</button>
+            </div>
+          </div>
+
+          <div id="auth-error-msg" class="auth-error-msg hidden"></div>
+
+          <div class="auth-remember-row">
+            <label>
+              <input type="checkbox" id="auth-remember-me" checked>
+              <span>Rester connecté sur cet appareil</span>
+            </label>
+            <span style="font-size:0.68rem; color:rgba(221,167,39,0.85); font-weight:700;">Défaut: 1234</span>
+          </div>
+
+          <button type="submit" id="btn-auth-unlock" class="btn btn-primary btn-block" style="padding:0.75rem;">
+            🔓 Déverrouiller l'accès
+          </button>
+        </form>
+
+      </div>
+    </div>
+
     <!-- Notification Toast Popup -->
     <div id="toast-container" class="toast-container"></div>
 
@@ -3070,6 +3787,294 @@ const apiHeaders = {
   "Content-Type": "application/json",
   Authorization: `Token ${BASEROW_TOKEN}`,
 };
+
+// =============================================================
+// GESTIONNAIRE DE SÉCURITÉ & AUTHENTIFICATION (Dunkirk IT)
+// =============================================================
+window.togglePasswordVisibility = function(inputId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  input.type = input.type === "password" ? "text" : "password";
+};
+
+const DEFAULT_AUTH_CONFIG = {
+  requireAuth: true,
+  users: {
+    "Christophe": {
+      role: "admin",
+      displayName: "Christophe",
+      title: "Administrateur & Fondateur",
+      avatar: "👨",
+      password: "1234",
+      lastLogin: null
+    },
+    "Dorianne": {
+      role: "user",
+      displayName: "Dorianne",
+      title: "Utilisatrice Planning",
+      avatar: "👩",
+      password: "1234",
+      lastLogin: null
+    }
+  },
+  auditLog: [
+    { timestamp: new Date().toISOString(), user: "Système", action: "Module d'authentification Dunkirk IT initialisé" }
+  ]
+};
+
+function loadAuthConfig() {
+  const data = localStorage.getItem("dunkirk_auth_config_v1");
+  if (!data) {
+    saveAuthConfig(DEFAULT_AUTH_CONFIG);
+    return DEFAULT_AUTH_CONFIG;
+  }
+  try {
+    const parsed = JSON.parse(data);
+    if (!parsed.users || !parsed.users.Christophe || !parsed.users.Dorianne) {
+      const merged = { ...DEFAULT_AUTH_CONFIG, ...parsed };
+      saveAuthConfig(merged);
+      return merged;
+    }
+    return parsed;
+  } catch (e) {
+    return DEFAULT_AUTH_CONFIG;
+  }
+}
+
+function saveAuthConfig(cfg) {
+  localStorage.setItem("dunkirk_auth_config_v1", JSON.stringify(cfg));
+}
+
+function addAuditLog(action, user = null) {
+  const cfg = loadAuthConfig();
+  const userName = user || (window.__currentUser?.displayName || "Anonyme");
+  if (!cfg.auditLog) cfg.auditLog = [];
+  cfg.auditLog.unshift({
+    timestamp: new Date().toISOString(),
+    user: userName,
+    action: action
+  });
+  if (cfg.auditLog.length > 50) cfg.auditLog = cfg.auditLog.slice(0, 50);
+  saveAuthConfig(cfg);
+}
+
+let currentUser = null;
+let selectedAuthUser = "Christophe";
+
+function initAuth() {
+  const cfg = loadAuthConfig();
+  const sessionData = localStorage.getItem("dunkirk_session_v1");
+
+  if (sessionData) {
+    try {
+      const sess = JSON.parse(sessionData);
+      if (sess && sess.user && cfg.users[sess.user]) {
+        setLoggedInUser(sess.user, false);
+        return;
+      }
+    } catch(e) {}
+  }
+
+  if (!cfg.requireAuth) {
+    setLoggedInUser("Christophe", false);
+    return;
+  }
+
+  showAuthOverlay();
+}
+
+function showAuthOverlay() {
+  const overlay = document.getElementById("auth-overlay");
+  if (overlay) overlay.classList.remove("hidden");
+  selectAuthUser(selectedAuthUser || "Christophe");
+  const pwdInput = document.getElementById("auth-password-input");
+  if (pwdInput) {
+    pwdInput.value = "";
+    setTimeout(() => pwdInput.focus(), 100);
+  }
+  const errorMsg = document.getElementById("auth-error-msg");
+  if (errorMsg) errorMsg.classList.add("hidden");
+}
+
+function hideAuthOverlay() {
+  const overlay = document.getElementById("auth-overlay");
+  if (overlay) overlay.classList.add("hidden");
+}
+
+function selectAuthUser(userName) {
+  selectedAuthUser = userName;
+  const btnChristophe = document.getElementById("auth-select-christophe");
+  const btnDorianne = document.getElementById("auth-select-dorianne");
+  const labelSelected = document.getElementById("auth-selected-name");
+
+  if (userName === "Christophe") {
+    btnChristophe?.classList.add("active");
+    btnDorianne?.classList.remove("active");
+    if (labelSelected) labelSelected.textContent = "Christophe (Admin)";
+  } else {
+    btnDorianne?.classList.add("active");
+    btnChristophe?.classList.remove("active");
+    if (labelSelected) labelSelected.textContent = "Dorianne";
+  }
+
+  const pwdInput = document.getElementById("auth-password-input");
+  if (pwdInput) {
+    pwdInput.value = "";
+    pwdInput.focus();
+  }
+  const errorMsg = document.getElementById("auth-error-msg");
+  if (errorMsg) errorMsg.classList.add("hidden");
+}
+
+function attemptLogin(password, rememberMe = true) {
+  const cfg = loadAuthConfig();
+  const userData = cfg.users[selectedAuthUser];
+
+  if (!userData) return false;
+
+  if (password === userData.password) {
+    userData.lastLogin = new Date().toISOString();
+    saveAuthConfig(cfg);
+
+    if (rememberMe) {
+      localStorage.setItem("dunkirk_session_v1", JSON.stringify({
+        user: selectedAuthUser,
+        loggedInAt: Date.now()
+      }));
+    } else {
+      localStorage.removeItem("dunkirk_session_v1");
+    }
+
+    setLoggedInUser(selectedAuthUser, true);
+    addAuditLog(`Connexion réussie de ${selectedAuthUser}`, selectedAuthUser);
+    hideAuthOverlay();
+    playSound('fanfare');
+    launchConfetti();
+    showToast(`Bienvenue ${userData.displayName} ! ✨`, userData.avatar);
+    return true;
+  } else {
+    const card = document.getElementById("auth-card");
+    const errorMsg = document.getElementById("auth-error-msg");
+    playSound('click');
+    if (card) {
+      card.classList.remove("auth-shake");
+      void card.offsetWidth;
+      card.classList.add("auth-shake");
+    }
+    if (errorMsg) {
+      errorMsg.textContent = "Mot de passe incorrect. Réessayez (par défaut : 1234)";
+      errorMsg.classList.remove("hidden");
+    }
+    addAuditLog(`Échec de connexion (mot de passe erroné) pour ${selectedAuthUser}`, selectedAuthUser);
+    return false;
+  }
+}
+
+function setLoggedInUser(userName, notify = false) {
+  const cfg = loadAuthConfig();
+  const userData = cfg.users[userName] || cfg.users["Christophe"];
+
+  currentUser = {
+    name: userName,
+    ...userData
+  };
+  window.__currentUser = currentUser;
+
+  const headerAvatar = document.getElementById("header-avatar");
+  const headerName = document.getElementById("header-user-label");
+  const headerRole = document.getElementById("header-role-tag");
+
+  if (headerAvatar) headerAvatar.textContent = userData.avatar;
+  if (headerName) headerName.textContent = userData.displayName;
+  if (headerRole) {
+    headerRole.textContent = userData.role === "admin" ? "Admin" : "Utilisatrice";
+    headerRole.className = `header-role-tag ${userData.role === "admin" ? "" : "user"}`;
+  }
+
+  const adminNavBtn = document.getElementById("bottom-nav-admin");
+  if (adminNavBtn) {
+    if (userData.role === "admin") {
+      adminNavBtn.style.display = "flex";
+    } else {
+      adminNavBtn.style.display = "none";
+    }
+  }
+
+  const currentActiveTab = document.querySelector(".tab-view.active")?.id;
+  if (currentActiveTab === "view-admin" && userData.role !== "admin") {
+    app.switchTab("planning");
+  }
+
+  if (userData.role === "admin") {
+    renderAdminDashboard();
+  }
+}
+
+function lockCurrentSession() {
+  localStorage.removeItem("dunkirk_session_v1");
+  currentUser = null;
+  window.__currentUser = null;
+  playSound('click');
+  showToast("Session verrouillée 🔒", "🛡️");
+  showAuthOverlay();
+}
+
+function renderAdminDashboard() {
+  const cfg = loadAuthConfig();
+  const appointments = window.__appointments || loadLocalAppointments();
+
+  const toggleAuth = document.getElementById("admin-toggle-require-auth");
+  if (toggleAuth) {
+    toggleAuth.checked = cfg.requireAuth !== false;
+  }
+
+  const total = appointments.length;
+  const countDorianne = appointments.filter(a => a.user === "Dorianne").length;
+  const countChristophe = appointments.filter(a => a.user === "Christophe").length;
+  const countBoth = appointments.filter(a => a.user === "Tous les deux" || a.user === "Les deux").length;
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  const countUpcoming = appointments.filter(a => a.date >= todayStr).length;
+  const countPast = appointments.filter(a => a.date < todayStr).length;
+  const countGps = appointments.filter(a => a.latitude && a.longitude).length;
+
+  const elTot = document.getElementById("admin-kpi-total");
+  const elDori = document.getElementById("admin-kpi-dorianne");
+  const elChris = document.getElementById("admin-kpi-christophe");
+  const elBoth = document.getElementById("admin-kpi-both");
+  const elUpc = document.getElementById("admin-kpi-upcoming");
+  const elPast = document.getElementById("admin-kpi-past");
+  const elGps = document.getElementById("admin-kpi-gps");
+
+  if (elTot) elTot.textContent = total;
+  if (elDori) elDori.textContent = countDorianne;
+  if (elChris) elChris.textContent = countChristophe;
+  if (elBoth) elBoth.textContent = countBoth;
+  if (elUpc) elUpc.textContent = countUpcoming;
+  if (elPast) elPast.textContent = countPast;
+  if (elGps) elGps.textContent = countGps;
+
+  const auditList = document.getElementById("admin-audit-log-list");
+  if (auditList) {
+    auditList.innerHTML = "";
+    const logs = cfg.auditLog || [];
+    if (logs.length === 0) {
+      auditList.innerHTML = `<div style="color:var(--text-muted); padding:0.5rem; text-align:center;">Aucune activité récente.</div>`;
+    } else {
+      logs.forEach(log => {
+        const item = document.createElement("div");
+        item.className = "audit-item";
+        const dateObj = new Date(log.timestamp);
+        const timeFormatted = isNaN(dateObj.getTime()) ? "--:--" : `${String(dateObj.getHours()).padStart(2, "0")}:${String(dateObj.getMinutes()).padStart(2, "0")}`;
+        item.innerHTML = `
+          <span class="audit-time">${timeFormatted}</span>
+          <span><strong>${log.user}:</strong> ${log.action}</span>
+        `;
+        auditList.appendChild(item);
+      });
+    }
+  }
+}
 
 // =============================================================
 // SYNTHÉTISEUR AUDIO WEB API (Effets Fun Dunkirk IT 100% Hors-Ligne)
@@ -3921,6 +4926,32 @@ function closeDetailModal() {
 // =============================================================
 let isEditingMode = false;
 
+// Gestion visuelle & interactive des boutons radio utilisateur
+function updateUserRadioVisuals() {
+  document.querySelectorAll(".user-radio-chip").forEach(chip => {
+    const radio = chip.querySelector("input[name='rdv-user']");
+    if (radio && radio.checked) {
+      chip.classList.add("selected");
+    } else {
+      chip.classList.remove("selected");
+    }
+  });
+}
+
+function setupUserRadioChips() {
+  document.querySelectorAll(".user-radio-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const radio = chip.querySelector("input[name='rdv-user']");
+      if (radio) {
+        document.querySelectorAll("input[name='rdv-user']").forEach(r => r.checked = false);
+        radio.checked = true;
+        updateUserRadioVisuals();
+      }
+    });
+  });
+  updateUserRadioVisuals();
+}
+
 function editCurrentAppointment() {
   const appt = window.__selectedAppointment;
   if (!appt) return;
@@ -3932,9 +4963,21 @@ function editCurrentAppointment() {
   document.getElementById("form-heading").textContent = "Modifier le Rendez-vous";
   document.getElementById("edit-rdv-id").value = String(appt.id);
 
-  // Radio user
-  const userRadio = document.querySelector(`input[name="rdv-user"][value="${appt.user}"]`);
-  if (userRadio) userRadio.checked = true;
+  // Normalisation rigoureuse de l'utilisateur (gère 'Tous les deux', 'Les deux', 'Christophe', 'Dorianne')
+  let targetUser = (appt.user || "Dorianne").trim();
+  if (targetUser === "Les deux" || targetUser === "Tous" || targetUser.toLowerCase() === "tous les deux") {
+    targetUser = "Tous les deux";
+  } else if (targetUser.toLowerCase() === "christophe") {
+    targetUser = "Christophe";
+  } else {
+    targetUser = "Dorianne";
+  }
+
+  // Décocher tous les radios puis cocher précisément celui de l'utilisateur
+  document.querySelectorAll("input[name='rdv-user']").forEach(r => {
+    r.checked = (r.value === targetUser);
+  });
+  updateUserRadioVisuals();
 
   // Radio style
   const styleRadio = document.querySelector(`input[name="rdv-style"][value="${appt.categorie}"]`);
@@ -4000,7 +5043,7 @@ function resetForm() {
     dateInput.max = "2099-12-31";
   }
 
-  // CORRECTION BUG: Toujours réinitialiser l'heure (la condition !timeInput.value bloquait la remise à zéro après modif)
+  // Toujours réinitialiser l'heure
   const timeInput = document.getElementById("rdv-time");
   if (timeInput) {
     const now = new Date();
@@ -4014,9 +5057,12 @@ function resetForm() {
   const lonInput = document.getElementById("rdv-lon");
   if (lonInput) lonInput.value = "2.3768";
 
-  // Réinitialiser les boutons radio
-  const defaultUser = document.querySelector("input[name='rdv-user'][value='Dorianne']");
-  if (defaultUser) defaultUser.checked = true;
+  // Réinitialiser les boutons radio sur Dorianne par défaut
+  document.querySelectorAll("input[name='rdv-user']").forEach(r => {
+    r.checked = (r.value === "Dorianne");
+  });
+  updateUserRadioVisuals();
+
   const firstStyle = document.querySelector("input[name='rdv-style']");
   if (firstStyle) firstStyle.checked = true;
 
@@ -4028,8 +5074,15 @@ async function submitForm(e) {
   e.preventDefault();
   const id = document.getElementById("edit-rdv-id").value.trim();
 
+  // Récupération fiable de l'utilisateur sélectionné
+  let selectedUser = "Dorianne";
+  const checkedRadio = document.querySelector("input[name='rdv-user']:checked");
+  if (checkedRadio && checkedRadio.value) {
+    selectedUser = checkedRadio.value;
+  }
+
   const data = {
-    user: document.querySelector("input[name='rdv-user']:checked")?.value || "Dorianne",
+    user: selectedUser,
     categorie: document.querySelector("input[name='rdv-style']:checked")?.value || "Co-transportage",
     titre: document.getElementById("rdv-title").value.trim(),
     date: document.getElementById("rdv-date").value || new Date().toISOString().split("T")[0],
@@ -4226,7 +5279,7 @@ function showGuidance(appt) {
     className: 'custom-gold-marker',
     html: `
       <div style="background:#07162C; border:2px solid #DDA727; border-radius:50%; width:34px; height:34px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 15px rgba(221,167,39,0.7); font-size:16px;">
-        ${appt.user === "Dorianne" ? "👩" : "👨"}
+        ${appt.user === "Dorianne" ? "👩" : (appt.user === "Christophe" ? "👨" : "👫")}
       </div>
     `,
     iconSize: [34, 34],
@@ -4798,10 +5851,187 @@ document.addEventListener("DOMContentLoaded", () => {
     showToast("Synchronisation Baserow terminée !", "🔄");
   });
 
+  // 13. Authentification & Événements Back-Office
+  document.getElementById("btn-user-profile")?.addEventListener("click", () => {
+    playSound('click');
+    if (confirm("Voulez-vous verrouiller la session actuelle et changer d'utilisateur ?")) {
+      lockCurrentSession();
+    }
+  });
+
+  document.getElementById("admin-lock-session-btn")?.addEventListener("click", () => {
+    lockCurrentSession();
+  });
+
+  document.getElementById("auth-select-christophe")?.addEventListener("click", () => {
+    playSound('click');
+    selectAuthUser("Christophe");
+  });
+
+  document.getElementById("auth-select-dorianne")?.addEventListener("click", () => {
+    playSound('click');
+    selectAuthUser("Dorianne");
+  });
+
+  document.getElementById("auth-form")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const pwd = document.getElementById("auth-password-input")?.value.trim() || "";
+    const rem = document.getElementById("auth-remember-me")?.checked ?? true;
+    attemptLogin(pwd, rem);
+  });
+
+  // Bascule exigence mot de passe dans le Back-Office
+  document.getElementById("admin-toggle-require-auth")?.addEventListener("change", (e) => {
+    const cfg = loadAuthConfig();
+    cfg.requireAuth = e.target.checked;
+    saveAuthConfig(cfg);
+    playSound('click');
+    addAuditLog(`Exigence de mot de passe ${cfg.requireAuth ? "activée" : "désactivée"}`);
+    showToast(`Sécurité : mot de passe ${cfg.requireAuth ? "activé" : "désactivé"} au démarrage`, "🔐");
+  });
+
+  // Sauvegarde mot de passe Christophe
+  document.getElementById("btn-save-pwd-christophe")?.addEventListener("click", () => {
+    const newPwd = document.getElementById("admin-pwd-christophe")?.value.trim();
+    if (!newPwd) {
+      alert("Veuillez saisir un mot de passe.");
+      return;
+    }
+    const cfg = loadAuthConfig();
+    cfg.users["Christophe"].password = newPwd;
+    saveAuthConfig(cfg);
+    playSound('carillon');
+    addAuditLog("Mot de passe administrateur Christophe mis à jour", "Christophe");
+    document.getElementById("admin-pwd-christophe").value = "";
+    const fb = document.getElementById("admin-pwd-feedback");
+    if (fb) {
+      fb.className = "feedback-msg success";
+      fb.textContent = "✅ Mot de passe Christophe mis à jour avec succès !";
+      fb.classList.remove("hidden");
+      setTimeout(() => fb.classList.add("hidden"), 3500);
+    }
+    showToast("Mot de passe Christophe enregistré !", "🔒");
+    renderAdminDashboard();
+  });
+
+  // Sauvegarde mot de passe Dorianne
+  document.getElementById("btn-save-pwd-dorianne")?.addEventListener("click", () => {
+    const newPwd = document.getElementById("admin-pwd-dorianne")?.value.trim();
+    if (!newPwd) {
+      alert("Veuillez saisir un mot de passe pour Dorianne.");
+      return;
+    }
+    const cfg = loadAuthConfig();
+    cfg.users["Dorianne"].password = newPwd;
+    saveAuthConfig(cfg);
+    playSound('carillon');
+    addAuditLog("Mot de passe de Dorianne modifié par l'administrateur", "Christophe");
+    document.getElementById("admin-pwd-dorianne").value = "";
+    const fb = document.getElementById("admin-pwd-feedback");
+    if (fb) {
+      fb.className = "feedback-msg success";
+      fb.textContent = "✅ Mot de passe de Dorianne mis à jour avec succès !";
+      fb.classList.remove("hidden");
+      setTimeout(() => fb.classList.add("hidden"), 3500);
+    }
+    showToast("Mot de passe Dorianne enregistré !", "🔒");
+    renderAdminDashboard();
+  });
+
+  // Réinitialisation mot de passe Dorianne à 1234
+  document.getElementById("btn-reset-pwd-dorianne")?.addEventListener("click", () => {
+    if (confirm("Réinitialiser le mot de passe de Dorianne à '1234' ?")) {
+      const cfg = loadAuthConfig();
+      cfg.users["Dorianne"].password = "1234";
+      saveAuthConfig(cfg);
+      playSound('click');
+      addAuditLog("Mot de passe de Dorianne réinitialisé à 1234", "Christophe");
+      const fb = document.getElementById("admin-pwd-feedback");
+      if (fb) {
+        fb.className = "feedback-msg success";
+        fb.textContent = "✅ Mot de passe de Dorianne réinitialisé à '1234'.";
+        fb.classList.remove("hidden");
+        setTimeout(() => fb.classList.add("hidden"), 3500);
+      }
+      showToast("Mot de passe Dorianne remis à 1234", "🔄");
+      renderAdminDashboard();
+    }
+  });
+
+  // Effacer l'historique d'audit
+  document.getElementById("btn-clear-audit")?.addEventListener("click", () => {
+    if (confirm("Effacer l'historique d'activité du journal ?")) {
+      const cfg = loadAuthConfig();
+      cfg.auditLog = [{ timestamp: new Date().toISOString(), user: "Christophe", action: "Journal d'audit effacé" }];
+      saveAuthConfig(cfg);
+      renderAdminDashboard();
+      showToast("Journal effacé", "🧹");
+    }
+  });
+
+  // Purge des RDV passés (> 30 jours)
+  document.getElementById("btn-admin-purge-old")?.addEventListener("click", () => {
+    const list = loadLocalAppointments();
+    const thresholdDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    const initialCount = list.length;
+    const kept = list.filter(a => a.date >= thresholdDate);
+    const removedCount = initialCount - kept.length;
+
+    if (removedCount === 0) {
+      alert("Aucun rendez-vous antérieur à 30 jours n'a été trouvé.");
+      return;
+    }
+
+    if (confirm(`Purger ${removedCount} ancien(s) rendez-vous archivé(s) ?`)) {
+      saveLocalAppointments(kept);
+      window.__appointments = kept;
+      renderAppointments(kept);
+      updateStats(kept);
+      renderAdminDashboard();
+      addAuditLog(`Purge de ${removedCount} rendez-vous anciens`, "Christophe");
+      playSound('click');
+      showToast(`${removedCount} rendez-vous purgés avec succès !`, "🧹");
+    }
+  });
+
+  // Export complet admin
+  document.getElementById("btn-admin-full-export")?.addEventListener("click", () => {
+    const exportData = {
+      exportedAt: new Date().toISOString(),
+      exportedBy: "Christophe (Admin)",
+      appointments: loadLocalAppointments(),
+      styles: loadCustomStyles()
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `dunkirk-rdv-admin-backup-${new Date().toISOString().split("T")[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    addAuditLog("Sauvegarde admin complète exportée", "Christophe");
+    playSound('fanfare');
+    showToast("Sauvegarde admin complète téléchargée !", "💾");
+  });
+
+  // Forcer synchronisation Cloud Baserow
+  document.getElementById("btn-admin-force-sync")?.addEventListener("click", async () => {
+    playSound('click');
+    showToast("Synchronisation Cloud en cours...", "🔄");
+    await loadAndRender();
+    renderAdminDashboard();
+    addAuditLog("Synchronisation Cloud Baserow forcée", "Christophe");
+    showToast("Synchronisation Cloud réussie !", "⚡");
+  });
+
   // Initialisations
+  setupUserRadioChips();
   setupAddressAutocomplete();
   renderDynamicStyles();
   loadAndRender();
+
+  // Initialisation Authentification & Profil
+  initAuth();
 
   // Date du formulaire par défaut
   resetForm();
@@ -4830,6 +6060,13 @@ document.addEventListener("DOMContentLoaded", () => {
 // Exportation globale pour les onclick inline
 export const app = {
   switchTab: (name) => {
+    // Si Dorianne tente d'accéder au Back-Office
+    if (name === "admin" && window.__currentUser && window.__currentUser.role !== "admin") {
+      playSound('click');
+      showToast("Accès restreint : Réservé à l'administrateur Christophe 🔒", "🛡️");
+      return;
+    }
+
     document.querySelectorAll(".tab-view").forEach(el => el.classList.remove("active"));
     const target = document.getElementById(`view-${name}`);
     if (target) target.classList.add("active");
@@ -4837,6 +6074,10 @@ export const app = {
     document.querySelectorAll(".nav-item").forEach(el => el.classList.remove("active"));
     const nav = document.querySelector(`.nav-item[data-tab='${name}']`);
     if (nav) nav.classList.add("active");
+
+    if (name === "admin") {
+      renderAdminDashboard();
+    }
 
     if (name === "guidance" && mapInstance) {
       setTimeout(() => mapInstance.invalidateSize(), 150);
@@ -4850,6 +6091,9 @@ export const app = {
     const appt = (window.__appointments || loadLocalAppointments()).find(a => a.id == id);
     if (appt) selectAndGuide(appt);
   },
+  lockCurrentSession,
+  showAuthOverlay,
+  renderAdminDashboard,
   cancelEdit,
   launchConfetti,
   playSound,
