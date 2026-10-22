@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0F172A">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Dunkirk RDV">
+  <title>Dunkirk RDV & Guidage | Dorianne & Christophe - Dunkirk Informatique</title>
+  
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/png" href="./icons/icon-192.png">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  
+  <!-- Polices Google Fonts Premium -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet CSS pour la cartographie GPS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  
+  <!-- Styles CSS -->
+  <link rel="stylesheet" href="./css/styles.css">
+</head>
+<body>
+  <!-- Canvas pour les confettis d'ambiance et de célébration -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <div id="app-container">
+    
+    <!-- En-tête mobile Dunkirk Informatique -->
+    <header class="app-header">
+      <div class="header-brand">
+        <div class="brand-logo-shield">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#DDA727" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path>
+            <path d="m9 12 2 2 4-4"></path>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>DUNKIRK</h1>
+          <span class="sub-brand">RDV &amp; GUIDAGE</span>
+        </div>
+      </div>
+      
+      <div class="header-actions">
+        <!-- Bouton Confetti Fun -->
+        <button id="quick-celebrate-btn" class="icon-btn fun-pulse" title="Explosion de confettis !">🎉</button>
+        <!-- Indicateur Statut Cloud Dunkirk IT -->
+        <button id="cloud-status-badge" class="badge-status-cloud offline" title="Synchronisation Cloud Dunkirk IT">
+          <span class="dot"></span>
+          <span class="status-label" id="cloud-status-text">Hors-ligne</span>
+        </button>
+        <!-- Bouton alerte audio rapide -->
+        <button id="toggle-audio-btn" class="icon-btn active" title="Sonneries d'alerte">
+          <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- SÉLECTEUR RAPIDE D'UTILISATEUR (DORIANNE / CHRISTOPHE / TOUS) -->
+    <div class="user-switch-bar">
+      <div class="user-toggle-group">
+        <button class="user-pill-btn active" data-user-filter="all">
+          <span class="avatar-icon">👫</span>
+          <span>Tous</span>
+        </button>
+        <button class="user-pill-btn" data-user-filter="Dorianne">
+          <span class="avatar-icon dorianne-avatar">👩</span>
+          <span>Dorianne</span>
+        </button>
+        <button class="user-pill-btn" data-user-filter="Christophe">
+          <span class="avatar-icon christophe-avatar">👨</span>
+          <span>Christophe</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Bannière d'alerte imminente si un départ approche -->
+    <div id="urgent-alert-banner" class="urgent-banner hidden">
+      <div class="alert-icon-pulse">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </div>
+      <div class="banner-content">
+        <span class="banner-title" id="urgent-title">Départ imminent !</span>
+        <span class="banner-subtitle" id="urgent-details">RDV dans 15 min - Départ conseillé maintenant</span>
+      </div>
+      <button id="banner-action-guide" class="btn-banner-action">Guidage</button>
+      <button id="banner-dismiss" class="btn-banner-close">&times;</button>
+    </div>
+
+    <!-- CONTENU PRINCIPAL PAR ONGLETS -->
+    <main class="app-main">
+      
+      <!-- ONGLET 1: PLANNING & LISTE DES RDV -->
+      <section id="view-planning" class="tab-view active">
+        <div class="section-top-bar">
+          <div class="quick-stats">
+            <div class="stat-card">
+              <span class="stat-number" id="stats-today">0</span>
+              <span class="stat-caption">Aujourd'hui</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-number" id="stats-upcoming">0</span>
+              <span class="stat-caption">À venir</span>
+            </div>
+            <div class="stat-card primary-gradient">
+              <span class="stat-number" id="stats-total">0</span>
+              <span class="stat-caption">Total</span>
+            </div>
+          </div>
+          
+          <!-- Barre de recherche -->
+          <div class="search-box">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="search-input" placeholder="Rechercher (lieu, passager, motif)...">
+            <button id="clear-search-btn" class="clear-btn hidden">&times;</button>
+          </div>
+
+          <!-- Carrousel des styles de déplacement (Filtres) -->
+          <div class="category-filters-container">
+            <div class="category-filters" id="category-filters-list">
+              <!-- Rempli dynamiquement -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Liste des rendez-vous -->
+        <div class="appointments-container">
+          <div class="list-section-header">
+            <h2 id="list-group-title">Rendez-vous programmés</h2>
+            <div class="header-tools">
+              <button id="refresh-data-btn" class="mini-btn" title="Recharger / Synchroniser">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M23 4v6h-6"></path>
+                  <path d="M1 20v-6h6"></path>
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div id="appointments-list" class="cards-list">
+            <!-- Liste générée en JS -->
+          </div>
+
+          <!-- État vide -->
+          <div id="empty-state" class="empty-state hidden">
+            <div class="empty-icon">📅</div>
+            <h3>Aucun rendez-vous trouvé</h3>
+            <p>Ajoutez votre premier déplacement ou modifiez vos filtres.</p>
+            <button class="btn btn-primary" onclick="app.switchTab('new')">
+              + Planifier un rendez-vous
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ONGLET 2: FORMULAIRE NOUVEAU RDV / ÉDITION -->
+      <section id="view-new" class="tab-view">
+        <div class="form-container">
+          <div class="form-header">
+            <h2 id="form-heading">Nouveau Rendez-vous</h2>
+            <p>Saisissez les informations de déplacement et d'alerte</p>
+          </div>
+
+          <form id="appointment-form" onsubmit="return false;">
+            <input type="hidden" id="edit-rdv-id" value="">
+
+            <!-- Utilisateur assigné (Dorianne, Christophe ou les deux) -->
+            <div class="form-group">
+              <label class="form-label">Pour qui est ce rendez-vous ? <span class="req">*</span></label>
+              <div class="user-selector-radios">
+                <label class="user-radio-chip">
+                  <input type="radio" name="rdv-user" value="Dorianne" checked>
+                  <span class="chip-content dorianne-theme">
+                    <span class="icon">👩</span>
+                    <span>Dorianne</span>
+                  </span>
+                </label>
+                <label class="user-radio-chip">
+                  <input type="radio" name="rdv-user" value="Christophe">
+                  <span class="chip-content christophe-theme">
+                    <span class="icon">👨</span>
+                    <span>Christophe</span>
+                  </span>
+                </label>
+                <label class="user-radio-chip">
+                  <input type="radio" name="rdv-user" value="Tous les deux">
+                  <span class="chip-content both-theme">
+                    <span class="icon">👫</span>
+                    <span>Les deux</span>
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Style de déplacement -->
+            <div class="form-group">
+              <label class="form-label">Style de déplacement <span class="req">*</span></label>
+              <div class="style-selector" id="style-selector-radios">
+                <!-- Rempli dynamiquement avec les styles (Co-transportage, Médical, etc.) -->
+              </div>
+            </div>
+
+            <!-- Titre / Objet -->
+            <div class="form-group">
+              <label for="rdv-title" class="form-label">Titre / Motif <span class="req">*</span></label>
+              <input type="text" id="rdv-title" class="form-control" placeholder="Ex: Co-transportage Gare, Consultation Dr, Coupe de cheveux..." required>
+            </div>
+
+            <!-- Date et Heure -->
+            <div class="form-row">
+              <div class="form-group col-6">
+                <label for="rdv-date" class="form-label">Date <span class="req">*</span></label>
+                <input type="date" id="rdv-date" class="form-control" required>
+              </div>
+              <div class="form-group col-6">
+                <label for="rdv-time" class="form-label">Heure <span class="req">*</span></label>
+                <input type="time" id="rdv-time" class="form-control" required>
+              </div>
+            </div>
+
+            <!-- Adresse et Guidage GPS -->
+            <div class="form-group address-group">
+              <div class="label-with-action">
+                <label for="rdv-address" class="form-label">Lieu / Adresse <span class="req">*</span></label>
+                <button type="button" id="btn-use-current-pos" class="text-link-btn">
+                  📍 Ma position actuelle
+                </button>
+              </div>
+              <div class="address-input-wrapper">
+                <input type="text" id="rdv-address" class="form-control" placeholder="Saisir une adresse ou un lieu (ex: Dunkerque, Malo...)" autocomplete="off" required>
+                <div id="address-suggestions" class="address-dropdown hidden"></div>
+              </div>
+              <input type="hidden" id="rdv-lat" value="">
+              <input type="hidden" id="rdv-lon" value="">
+              <small class="form-hint">Autocomplétion intelligente par l'API Adresse officielle</small>
+            </div>
+
+            <!-- Passager ou Contact -->
+            <div class="form-row">
+              <div class="form-group col-6">
+                <label for="rdv-contact-name" class="form-label">Passager / Contact</label>
+                <input type="text" id="rdv-contact-name" class="form-control" placeholder="Ex: Mme Dupont, Dr Martin">
+              </div>
+              <div class="form-group col-6">
+                <label for="rdv-contact-phone" class="form-label">Téléphone</label>
+                <input type="tel" id="rdv-contact-phone" class="form-control" placeholder="06 12 34 56 78">
+              </div>
+            </div>
+
+            <!-- Paramètre d'alerte -->
+            <div class="form-group">
+              <label for="rdv-alert-lead" class="form-label">Délai de rappel avant départ</label>
+              <select id="rdv-alert-lead" class="form-control">
+                <option value="15">15 minutes avant</option>
+                <option value="30" selected>30 minutes avant (Recommandé)</option>
+                <option value="45">45 minutes avant</option>
+                <option value="60">1 heure avant</option>
+                <option value="120">2 heures avant</option>
+                <option value="1440">La veille (24h avant)</option>
+              </select>
+            </div>
+
+            <!-- Notes complémentaires -->
+            <div class="form-group">
+              <label for="rdv-notes" class="form-label">Instructions & Notes</label>
+              <textarea id="rdv-notes" class="form-control" rows="2" placeholder="Digicode, étage, matériel à prévoir, bagages..."></textarea>
+            </div>
+
+            <!-- Boutons de soumission -->
+            <div class="form-actions">
+              <button type="button" id="btn-cancel-edit" class="btn btn-secondary hidden" onclick="app.cancelEdit()">Annuler</button>
+              <button type="submit" id="btn-save-rdv" class="btn btn-primary btn-block">Enregistrer le rendez-vous</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ONGLET 3: GUIDAGE GPS & ITINÉRAIRE -->
+      <section id="view-guidance" class="tab-view">
+        <div class="guidance-container">
+          <div class="guidance-header">
+            <h2>Guidage & Trajet</h2>
+            <div class="select-rdv-box">
+              <select id="guidance-rdv-select" class="form-control">
+                <option value="">Sélectionner un rendez-vous...</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Détails de navigation -->
+          <div id="guidance-info-panel" class="guidance-info-card">
+            <div class="info-dest-header">
+              <div class="badge-group">
+                <span class="user-mini-badge" id="guide-badge-user">👩 Dorianne</span>
+                <span class="dest-badge" id="guide-badge-style">Co-transportage</span>
+              </div>
+              <h3 id="guide-dest-title">Aucun rendez-vous sélectionné</h3>
+            </div>
+            <p id="guide-dest-address" class="dest-addr">Veuillez choisir un rendez-vous à guider ci-dessus.</p>
+            
+            <div class="trip-metrics" id="trip-metrics-row">
+              <div class="metric-pill">
+                <span class="metric-lbl">Distance estimée</span>
+                <span class="metric-val" id="guide-distance">-- km</span>
+              </div>
+              <div class="metric-pill">
+                <span class="metric-lbl">Temps de route</span>
+                <span class="metric-val" id="guide-duration">-- min</span>
+              </div>
+              <div class="metric-pill">
+                <span class="metric-lbl">Heure RDV</span>
+                <span class="metric-val" id="guide-time">--:--</span>
+              </div>
+            </div>
+
+            <!-- Boutons de lancement d'applications GPS Externes -->
+            <div class="gps-external-launchers">
+              <span class="launchers-label">Lancer le guidage direct en 1 clic :</span>
+              <div class="launcher-buttons">
+                <button id="btn-open-waze" class="btn-gps-app btn-waze">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12c0 2.85 1.2 5.41 3.12 7.24L4 22l3.22-1.07C8.6 21.6 10.24 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm-3.5 11c-.83 0-1.5-.67-1.5-1.5S7.67 10 8.5 10s1.5.67 1.5 1.5S9.33 13 8.5 13zm7 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                  </svg>
+                  <span>Waze</span>
+                </button>
+                <button id="btn-open-gmaps" class="btn-gps-app btn-gmaps">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                  </svg>
+                  <span>Google Maps</span>
+                </button>
+                <button id="btn-open-applemaps" class="btn-gps-app btn-apple">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.84c.64-.78 1.08-1.87.96-2.96-.93.04-2.07.62-2.73 1.4-.58.67-1.09 1.76-.95 2.82 1.04.08 2.1-.5 2.72-1.26z"/>
+                  </svg>
+                  <span>Apple Plans</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Carte interactive Leaflet intégrée -->
+          <div class="map-wrapper">
+            <div id="interactive-map"></div>
+            <button id="btn-recenter-user" class="map-overlay-btn" title="Me localiser">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="7"></circle>
+                <circle cx="12" cy="12" r="2" fill="currentColor"></circle>
+                <line x1="12" y1="1" x2="12" y2="5"></line>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="1" y1="12" x2="5" y2="12"></line>
+                <line x1="19" y1="12" x2="23" y2="12"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ONGLET 4: ALERTES & NOTIFICATIONS -->
+      <section id="view-alerts" class="tab-view">
+        <div class="alerts-container">
+          <div class="alerts-header">
+            <h2>Centre d'Alertes</h2>
+            <p>Gestion des notifications, rappels sonores et décomptes</p>
+          </div>
+
+          <!-- Carte statut des alertes -->
+          <div class="alert-settings-card">
+            <div class="setting-row">
+              <div class="setting-info">
+                <span class="setting-title">Avertisseur Sonore Dunkirk IT</span>
+                <span class="setting-desc">Joue un carillon sonore quand le départ approche</span>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="chk-audio-alerts" checked>
+                <span class="slider round"></span>
+              </label>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <span class="setting-title">Notifications Web / Push</span>
+                <span class="setting-desc">Alerte sur l'écran du smartphone</span>
+              </div>
+              <button id="btn-request-notifications" class="mini-pill-btn">Activer</button>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-info">
+                <span class="setting-title">Tester la sonnerie d'alerte</span>
+                <span class="setting-desc">Vérifier le volume et le carillon synthétique</span>
+              </div>
+              <button id="btn-test-sound" class="mini-pill-btn secondary">🔊 Tester son</button>
+            </div>
+          </div>
+
+          <!-- Boîte à Sons Dunkirk IT (Fun & Ambiance Flandres) -->
+          <div class="soundboard-card">
+            <div class="soundboard-header">
+              <span class="soundboard-title">🎺 Boîte à Sons Dunkirk IT</span>
+              <span class="badge-status-cloud online">Synthé 100% Hors-ligne</span>
+            </div>
+            <div class="sound-grid">
+              <button class="btn-fun-sound" data-sound="carillon">
+                <span class="sound-emoji">🔔</span>
+                <span>Carillon Or</span>
+              </button>
+              <button class="btn-fun-sound" data-sound="brume">
+                <span class="sound-emoji">🚢</span>
+                <span>Corne Dunkerque</span>
+              </button>
+              <button class="btn-fun-sound" data-sound="vroum">
+                <span class="sound-emoji">🏎️</span>
+                <span>Turbo Vroum</span>
+              </button>
+              <button class="btn-fun-sound" data-sound="cyber">
+                <span class="sound-emoji">⚡</span>
+                <span>Bip Cyber IT</span>
+              </button>
+              <button class="btn-fun-sound" data-sound="fanfare">
+                <span class="sound-emoji">🎉</span>
+                <span>Fanfare Victoire</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Alertes actives du jour -->
+          <h3 class="alerts-subtitle">Décomptes et alertes de départ</h3>
+          <div id="active-alerts-feed" class="alerts-feed">
+            <!-- Liste dynamique des alertes -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ONGLET 5: RÉGLAGES & SYNCHRONISATION BASEROW -->
+      <section id="view-settings" class="tab-view">
+        <div class="settings-container">
+          <div class="settings-header">
+            <h2>Paramètres & Données</h2>
+            <p>Préférences, synchronisation Cloud et gestion des styles</p>
+          </div>
+
+          <!-- BLOC SYNCHRONISATION CLOUD SÉCURISÉE (Coordonnées intégrées et masquées) -->
+          <div class="card-setting-block">
+            <div class="block-title-row">
+              <div class="block-icon baserow-icon">⚡</div>
+              <div>
+                <h3>Synchronisation Cloud Sécurisée</h3>
+                <span class="block-desc">Partage en temps réel entre Dorianne & Christophe</span>
+              </div>
+            </div>
+
+            <div class="cloud-sync-status-box" style="background: rgba(7, 22, 44, 0.75); border: 1px solid rgba(221, 167, 39, 0.3); border-radius: var(--radius-sm); padding: 1rem; margin-bottom: 0.85rem;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.85rem; font-weight: 800; color: #FFFFFF;">État de connexion</span>
+                <span id="cloud-badge-setting" class="badge-status-cloud online">
+                  <span class="dot"></span>
+                  <span>Connecté & Sécurisé</span>
+                </span>
+              </div>
+              <p style="font-size: 0.75rem; color: #94A3B8; line-height: 1.4;">
+                Les identifiants et jetons de sécurité sont intégrés de manière transparente. Vos rendez-vous sont synchronisés automatiquement entre tous vos appareils.
+              </p>
+            </div>
+
+            <div class="baserow-actions" style="display: flex; gap: 0.6rem;">
+              <button type="button" id="btn-sync-baserow" class="btn btn-primary" style="flex: 1;">
+                🔄 Synchroniser maintenant
+              </button>
+            </div>
+
+            <!-- Message de feedback discret -->
+            <div id="baserow-feedback" class="feedback-msg hidden"></div>
+          </div>
+
+          <!-- GESTION DYNAMIQUE DES STYLES DE DÉPLACEMENT -->
+          <div class="card-setting-block">
+            <div class="block-title-row">
+              <div class="block-icon style-icon">🎨</div>
+              <div>
+                <h3>Styles de Déplacements</h3>
+                <span class="block-desc">Co-transportage, Médical, Coiffeur ou personnalisés</span>
+              </div>
+            </div>
+
+            <!-- Liste des styles actuels -->
+            <div id="custom-styles-list" class="styles-badge-grid">
+              <!-- Rempli dynamiquement -->
+            </div>
+
+            <!-- Formulaire d'ajout de style -->
+            <div class="add-style-inline">
+              <input type="text" id="new-style-name" class="form-control" placeholder="Nouveau style (Ex: Kiné, Gare, École...)">
+              <div class="style-options-inline">
+                <input type="text" id="new-style-emoji" class="form-control emoji-input" value="🚗" placeholder="Emoji">
+                <input type="color" id="new-style-color" class="color-picker-input" value="#3B82F6">
+                <button type="button" id="btn-add-style" class="btn btn-secondary">+ Ajouter</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- EXPORT / IMPORT LOCAL -->
+          <div class="card-setting-block">
+            <div class="block-title-row">
+              <div class="block-icon data-icon">💾</div>
+              <div>
+                <h3>Sauvegarde & Restauration</h3>
+                <span class="block-desc">Exportez ou importez vos données en un clic</span>
+              </div>
+            </div>
+
+            <div class="backup-actions">
+              <button id="btn-export-json" class="btn btn-secondary">Télécharger Sauvegarde JSON</button>
+              <label for="import-file-input" class="btn btn-secondary">
+                Restaurer Sauvegarde JSON
+                <input type="file" id="import-file-input" accept=".json" style="display:none;">
+              </label>
+              <button id="btn-reset-demo" class="btn btn-danger-outline">Recharger données démo</button>
+            </div>
+          </div>
+
+          <!-- CRÉDITS DUNKIRK INFORMATIQUE -->
+          <div class="about-card">
+            <div class="about-header">
+              <div class="about-logo">Dunkirk IT</div>
+              <div>
+                <h4>Dunkirk Informatique</h4>
+                <p>Développement de Solutions Métiers, Logicielles & Mobiles</p>
+              </div>
+            </div>
+            <p class="about-text">
+              Solution sur-mesure développée pour <strong>Dorianne & Christophe</strong> avec guidage GPS automatique, alertes sonores et synchronisation Baserow nomade.
+            </p>
+            <div class="about-meta">
+              <span>Version 1.2 PWA Responsive</span>
+              <span>Dunkerque & Hauts-de-France</span>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+
+    <!-- BARRE DE NAVIGATION INFÉRIEURE MOBILE (BOTTOM BAR) -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-tab="planning">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        <span>Planning</span>
+      </button>
+
+      <button class="nav-item" data-tab="new">
+        <div class="nav-fab-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </div>
+        <span>Ajouter</span>
+      </button>
+
+      <button class="nav-item" data-tab="guidance">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+        </svg>
+        <span>Guidage</span>
+      </button>
+
+      <button class="nav-item" data-tab="alerts">
+        <div class="badge-icon-wrapper">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          <span id="alerts-badge-count" class="nav-badge hidden">0</span>
+        </div>
+        <span>Alertes</span>
+      </button>
+
+      <button class="nav-item" data-tab="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+        <span>Paramètres</span>
+      </button>
+    </nav>
+
+    <!-- Modal d'affichage détaillé d'un rendez-vous -->
+    <div id="rdv-detail-modal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="badge-group">
+            <span class="user-mini-badge" id="modal-user-badge">👩 Dorianne</span>
+            <span class="modal-badge" id="modal-category-badge">Co-transportage</span>
+          </div>
+          <button class="modal-close" id="btn-close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <h3 id="modal-rdv-title">Titre du rendez-vous</h3>
+          <div class="modal-meta-grid">
+            <div class="meta-item">
+              <span class="meta-label">📅 Date & Heure</span>
+              <span class="meta-value" id="modal-datetime">--</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">📍 Lieu</span>
+              <span class="meta-value" id="modal-address">--</span>
+            </div>
+            <div class="meta-item" id="modal-contact-row">
+              <span class="meta-label">👤 Contact / Passager</span>
+              <div class="meta-flex">
+                <span class="meta-value" id="modal-contact">--</span>
+                <a href="#" id="modal-call-btn" class="phone-chip hidden">📞 Appeler</a>
+              </div>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">🔔 Rappel</span>
+              <span class="meta-value" id="modal-alert-info">--</span>
+            </div>
+          </div>
+          <div class="modal-notes-box" id="modal-notes-container">
+            <span class="meta-label">📝 Notes</span>
+            <p id="modal-notes">Aucune note particulière.</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="modal-btn-guide" class="btn btn-primary">
+            🧭 Lancer Guidage GPS
+          </button>
+          <div class="secondary-actions">
+            <button id="modal-btn-edit" class="btn btn-secondary">✏️ Modifier</button>
+            <button id="modal-btn-delete" class="btn btn-danger-outline">🗑️ Supprimer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification Toast Popup -->
+    <div id="toast-container" class="toast-container"></div>
+
+  </div>
+
+  <!-- Leaflet JS pour la cartographie -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- Application JS -->
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
