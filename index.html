@@ -2433,6 +2433,25 @@ input:checked + .slider:before {
               <span class="stat-caption">Total</span>
             </div>
           </div>
+
+          <!-- Tableau des scores par utilisateur -->
+          <div id="user-scoreboard" style="display:flex; gap:0.6rem; margin-top:0.5rem; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:0.5rem; background:rgba(236,72,153,0.12); border:1px solid rgba(236,72,153,0.4); border-radius:999px; padding:0.3rem 0.8rem; font-size:0.82rem; font-weight:700;">
+              <span>👩 Dorianne</span>
+              <span id="score-dorianne" style="background:rgba(236,72,153,0.25); color:#EC4899; border-radius:999px; min-width:22px; text-align:center; padding:0 5px; font-size:0.9rem;">0</span>
+              <span style="color:#94A3B8; font-weight:500;">RDV</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.5rem; background:rgba(139,92,246,0.12); border:1px solid rgba(139,92,246,0.4); border-radius:999px; padding:0.3rem 0.8rem; font-size:0.82rem; font-weight:700;">
+              <span>👨 Christophe</span>
+              <span id="score-christophe" style="background:rgba(139,92,246,0.25); color:#8B5CF6; border-radius:999px; min-width:22px; text-align:center; padding:0 5px; font-size:0.9rem;">0</span>
+              <span style="color:#94A3B8; font-weight:500;">RDV</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.5rem; background:rgba(221,167,39,0.12); border:1px solid rgba(221,167,39,0.4); border-radius:999px; padding:0.3rem 0.8rem; font-size:0.82rem; font-weight:700;">
+              <span>👥 Les deux</span>
+              <span id="score-both" style="background:rgba(221,167,39,0.25); color:#DDA727; border-radius:999px; min-width:22px; text-align:center; padding:0 5px; font-size:0.9rem;">0</span>
+              <span style="color:#94A3B8; font-weight:500;">RDV</span>
+            </div>
+          </div>
           
           <!-- Barre de recherche -->
           <div class="search-box">
@@ -3527,6 +3546,17 @@ function updateStats(list) {
   if (listTitle) {
     listTitle.textContent = `Rendez-vous programmés (${currentList.length})`;
   }
+
+  // Tableau des scores par utilisateur
+  const countDorianne = currentList.filter(a => a.user === "Dorianne").length;
+  const countChristophe = currentList.filter(a => a.user === "Christophe").length;
+  const countBoth = currentList.filter(a => a.user === "Tous les deux").length;
+  const elScoreDorianne = document.getElementById("score-dorianne");
+  const elScoreChristophe = document.getElementById("score-christophe");
+  const elScoreBoth = document.getElementById("score-both");
+  if (elScoreDorianne) elScoreDorianne.textContent = countDorianne;
+  if (elScoreChristophe) elScoreChristophe.textContent = countChristophe;
+  if (elScoreBoth) elScoreBoth.textContent = countBoth;
 }
 
 // =============================================================
@@ -4058,6 +4088,11 @@ async function submitForm(e) {
 
   resetForm();
   app.switchTab("planning");
+
+  // Afficher la modal d'alerte pour confirmer l'ajout / modification
+  setTimeout(() => {
+    showAppointmentAlert(targetAppt, !id, false);
+  }, 400);
 
   // Synchronisation asynchrone avec Baserow (capitalisé pour Baserow)
   const baserowData = {
