@@ -3229,6 +3229,13 @@ function renderAppointments(list) {
     );
   }
 
+  // TRI CROISSANT PAR DATE puis HEURE (le plus proche en premier)
+  filtered.sort((a, b) => {
+    const dateA = `${a.date || '9999-12-31'}T${a.heure || '00:00'}`;
+    const dateB = `${b.date || '9999-12-31'}T${b.heure || '00:00'}`;
+    return dateA.localeCompare(dateB);
+  });
+
   filtered.forEach(a => container.appendChild(createAppointmentCard(a)));
 
   const empty = document.getElementById("empty-state");
@@ -3359,7 +3366,10 @@ function openDetailModal(appt) {
   const alertInfo = document.getElementById("modal-alert-info");
   const notes = document.getElementById("modal-notes");
 
-  userBadge.textContent = `${appt.user === "Dorianne" ? "👩" : (appt.user === "Christophe" ? "👨" : "👫")} ${appt.user}`;
+  const userEmoji = appt.user === "Dorianne" ? "👩" : (appt.user === "Christophe" ? "👨" : "👫");
+  const userBadgeClass = appt.user === "Dorianne" ? "dorianne" : (appt.user === "Christophe" ? "christophe" : "");
+  userBadge.textContent = `${userEmoji} ${appt.user}`;
+  userBadge.className = `user-mini-badge ${userBadgeClass}`;
   catBadge.textContent = appt.categorie || "Déplacement";
   title.textContent = appt.titre;
   datetime.textContent = formatDateTime(appt.date, appt.heure);
@@ -3464,9 +3474,13 @@ function resetForm() {
   const saveBtn = document.getElementById("btn-save-rdv");
   if (saveBtn) saveBtn.textContent = "Enregistrer le rendez-vous";
 
-  // Toujours forcer la date à aujourd'hui
+  // Toujours forcer la date à aujourd'hui, avec une plage large pour permettre les années futures
   const dateInput = document.getElementById("rdv-date");
-  if (dateInput) dateInput.value = new Date().toISOString().split("T")[0];
+  if (dateInput) {
+    dateInput.value = new Date().toISOString().split("T")[0];
+    dateInput.min = "2020-01-01";
+    dateInput.max = "2099-12-31";
+  }
 
   // CORRECTION BUG: Toujours réinitialiser l'heure (la condition !timeInput.value bloquait la remise à zéro après modif)
   const timeInput = document.getElementById("rdv-time");
@@ -3529,6 +3543,14 @@ async function submitForm(e) {
 
   saveLocalAppointments(local);
   window.__appointments = local;
+
+  // Mettre à jour window.__selectedAppointment si on était en mode édition
+  // (corrige le prénom dans la modal après modification de la personne assignée)
+  if (id) {
+    const updatedAppt = local.find(a => String(a.id) === String(id));
+    if (updatedAppt) window.__selectedAppointment = updatedAppt;
+  }
+
   renderAppointments(local);
   updateStats(local);
 
