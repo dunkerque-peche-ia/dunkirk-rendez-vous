@@ -3575,6 +3575,10 @@ function checkImminentDepartures(list) {
   const todayStr = now.toISOString().split("T")[0];
   const todayAppts = list.filter(a => a.date === todayStr);
 
+  let urgentCount = 0;
+  let minDiff = Infinity;
+  let mostUrgent = null;
+
   if (todayAppts.length === 0) {
     const upcoming = list
       .filter(a => a.date >= todayStr)
@@ -3607,6 +3611,7 @@ function checkImminentDepartures(list) {
       `;
     }
   } else {
+    feed.innerHTML = "";
     todayAppts.forEach(a => {
       if (!a.heure) return;
       const [h, m] = a.heure.split(":").map(Number);
@@ -4091,7 +4096,11 @@ async function submitForm(e) {
 
   // Afficher la modal d'alerte pour confirmer l'ajout / modification
   setTimeout(() => {
-    showAppointmentAlert(targetAppt, !id, false);
+    try {
+      showAppointmentAlert(targetAppt, !id, false);
+    } catch(err) {
+      console.warn("Erreur affichage modal alerte:", err);
+    }
   }, 400);
 
   // Synchronisation asynchrone avec Baserow (capitalisé pour Baserow)
