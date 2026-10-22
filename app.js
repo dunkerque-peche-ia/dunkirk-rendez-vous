@@ -429,6 +429,13 @@ function renderAppointments(list) {
     );
   }
 
+  // TRI CROISSANT PAR DATE puis HEURE (le plus proche en premier)
+  filtered.sort((a, b) => {
+    const dateA = `${a.date || '9999-12-31'}T${a.heure || '00:00'}`;
+    const dateB = `${b.date || '9999-12-31'}T${b.heure || '00:00'}`;
+    return dateA.localeCompare(dateB);
+  });
+
   filtered.forEach(a => container.appendChild(createAppointmentCard(a)));
 
   const empty = document.getElementById("empty-state");
@@ -559,7 +566,10 @@ function openDetailModal(appt) {
   const alertInfo = document.getElementById("modal-alert-info");
   const notes = document.getElementById("modal-notes");
 
-  userBadge.textContent = `${appt.user === "Dorianne" ? "👩" : (appt.user === "Christophe" ? "👨" : "👫")} ${appt.user}`;
+  const userEmoji = appt.user === "Dorianne" ? "👩" : (appt.user === "Christophe" ? "👨" : "👫");
+  const userBadgeClass = appt.user === "Dorianne" ? "dorianne" : (appt.user === "Christophe" ? "christophe" : "");
+  userBadge.textContent = `${userEmoji} ${appt.user}`;
+  userBadge.className = `user-mini-badge ${userBadgeClass}`;
   catBadge.textContent = appt.categorie || "Déplacement";
   title.textContent = appt.titre;
   datetime.textContent = formatDateTime(appt.date, appt.heure);
@@ -588,15 +598,20 @@ function closeDetailModal() {
 // =============================================================
 // ÉDITION ET FORMULAIRE
 // =============================================================
+// ÉDITION ET FORMULAIRE
+// =============================================================
+let isEditingMode = false;
+
 function editCurrentAppointment() {
   const appt = window.__selectedAppointment;
   if (!appt) return;
 
   closeDetailModal();
+  isEditingMode = true;
   app.switchTab("new");
 
   document.getElementById("form-heading").textContent = "Modifier le Rendez-vous";
-  document.getElementById("edit-rdv-id").value = appt.id;
+  document.getElementById("edit-rdv-id").value = String(appt.id);
 
   // Radio user
   const userRadio = document.querySelector(`input[name="rdv-user"][value="${appt.user}"]`);
@@ -610,11 +625,11 @@ function editCurrentAppointment() {
   document.getElementById("rdv-date").value = appt.date || "";
   document.getElementById("rdv-time").value = appt.heure || "";
   document.getElementById("rdv-address").value = appt.adresse || "";
-  document.getElementById("rdv-lat").value = appt.latitude || "";
-  document.getElementById("rdv-lon").value = appt.longitude || "";
+  document.getElementById("rdv-lat").value = appt.latitude || "51.0343";
+  document.getElementById("rdv-lon").value = appt.longitude || "2.3768";
   document.getElementById("rdv-contact-name").value = appt.contact || "";
   document.getElementById("rdv-contact-phone").value = appt.telephone || "";
-  document.getElementById("rdv-alert-lead").value = appt.alerte_minutes || "30";
+  document.getElementById("rdv-alert-lead").value = String(appt.alerte_minutes || "30");
   document.getElementById("rdv-notes").value = appt.notes || "";
 
   document.getElementById("btn-cancel-edit").classList.remove("hidden");
@@ -629,6 +644,7 @@ function deleteCurrentAppointment() {
     let local = loadLocalAppointments();
     local = local.filter(a => a.id != appt.id);
     saveLocalAppointments(local);
+    window.__appointments = local;
     renderAppointments(local);
     updateStats(local);
     closeDetailModal();
@@ -642,26 +658,63 @@ function deleteCurrentAppointment() {
 }
 
 function resetForm() {
-  document.getElementById("appointment-form").reset();
-  document.getElementById("edit-rdv-id").value = "";
-  document.getElementById("form-heading").textContent = "Nouveau Rendez-vous";
-  document.getElementById("btn-cancel-edit").classList.add("hidden");
-  document.getElementById("btn-save-rdv").textContent = "Enregistrer le rendez-vous";
-  
-  // Date par défaut aujourd'hui
-  document.getElementById("rdv-date").value = new Date().toISOString().split("T")[0];
+  const form = document.getElementById("appointment-form");
+  if (form) form.reset();
+
+  const idInput = document.getElementById("edit-rdv-id");
+  if (idInput) idInput.value = "";
+
+  const heading = document.getElementById("form-heading");
+  if (heading) heading.textContent = "Nouveau Rendez-vous";
+
+  const cancelBtn = document.getElementById("btn-cancel-edit");
+  if (cancelBtn) cancelBtn.classList.add("hidden");
+
+  const saveBtn = document.getElementById("btn-save-rdv");
+  if (saveBtn) saveBtn.textContent = "Enregistrer le rendez-vous";
+
+  // Toujours forcer la date à aujourd'hui, avec une plage large pour les années futures
+  const dateInput = document.getElementById("rdv-date");
+  if (dateInput) {
+    dateInput.value = new Date().toISOString().split("T")[0];
+    dateInput.min = "2020-01-01";
+    dateInput.max = "2099-12-31";
+  }
+
+  // CORRECTION BUG: Toujours réinitialiser l'heure (la condition !timeInput.value bloquait la remise à zéro après modif)
+  const timeInput = document.getElementById("rdv-time");
+  if (timeInput) {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, "0");
+    const mins = String(Math.ceil(now.getMinutes() / 5) * 5 % 60).padStart(2, "0");
+    timeInput.value = `${hours}:${mins}`;
+  }
+
+  const latInput = document.getElementById("rdv-lat");
+  if (latInput) latInput.value = "51.0343";
+  const lonInput = document.getElementById("rdv-lon");
+  if (lonInput) lonInput.value = "2.3768";
+
+  // Réinitialiser les boutons radio
+  const defaultUser = document.querySelector("input[name='rdv-user'][value='Dorianne']");
+  if (defaultUser) defaultUser.checked = true;
+  const firstStyle = document.querySelector("input[name='rdv-style']");
+  if (firstStyle) firstStyle.checked = true;
+
+  isEditingMode = false;
+  window.__selectedAppointment = null;
 }
 
 async function submitForm(e) {
   e.preventDefault();
-  const id = document.getElementById("edit-rdv-id").value;
+  const id = document.getElementById("edit-rdv-id").value.trim();
 
   const data = {
     user: document.querySelector("input[name='rdv-user']:checked")?.value || "Dorianne",
     categorie: document.querySelector("input[name='rdv-style']:checked")?.value || "Co-transportage",
     titre: document.getElementById("rdv-title").value.trim(),
-    date: document.getElementById("rdv-date").value,
-    heure: document.getElementById("rdv-time").value,
+    date: document.getElementById("rdv-date").value || new Date().toISOString().split("T")[0],
+    heure: document.getElementById("rdv-time").value || "12:00",
     adresse: document.getElementById("rdv-address").value.trim(),
     latitude: parseFloat(document.getElementById("rdv-lat").value) || 51.0343,
     longitude: parseFloat(document.getElementById("rdv-lon").value) || 2.3768,
@@ -672,18 +725,30 @@ async function submitForm(e) {
   };
 
   let local = loadLocalAppointments();
+  let createdLocalId = null;
 
   if (id) {
-    const idx = local.findIndex(a => a.id == id);
+    const idx = local.findIndex(a => String(a.id) === String(id));
     if (idx >= 0) {
       local[idx] = { ...local[idx], ...data };
+    } else {
+      local.unshift({ id: isNaN(Number(id)) ? id : Number(id), ...data });
     }
   } else {
-    const newId = Date.now();
-    local.unshift({ id: newId, ...data });
+    createdLocalId = Date.now();
+    local.unshift({ id: createdLocalId, ...data });
   }
 
   saveLocalAppointments(local);
+  window.__appointments = local;
+
+  // Mettre à jour window.__selectedAppointment si on était en mode édition
+  // (corrige le prénom dans la modal après modification de la personne assignée)
+  if (id) {
+    const updatedAppt = local.find(a => String(a.id) === String(id));
+    if (updatedAppt) window.__selectedAppointment = updatedAppt;
+  }
+
   renderAppointments(local);
   updateStats(local);
 
@@ -721,10 +786,16 @@ async function submitForm(e) {
         method: "POST",
         body: JSON.stringify(baserowData),
       });
-      // Met à jour l'ID local avec le vrai ID Baserow
       if (created && created.id) {
-        local[0].id = created.id;
-        saveLocalAppointments(local);
+        let currentLocal = loadLocalAppointments();
+        const foundIdx = currentLocal.findIndex(a => a.id === createdLocalId);
+        if (foundIdx >= 0) {
+          currentLocal[foundIdx].id = created.id;
+        } else if (currentLocal.length > 0) {
+          currentLocal[0].id = created.id;
+        }
+        saveLocalAppointments(currentLocal);
+        window.__appointments = currentLocal;
       }
     }
     checkCloudStatus(true);
@@ -732,6 +803,11 @@ async function submitForm(e) {
     console.warn("Synchronisation Baserow différée (mode hors-ligne actif):", err);
     checkCloudStatus(false);
   }
+}
+
+function cancelEdit() {
+  resetForm();
+  app.switchTab("planning");
 }
 
 // =============================================================
@@ -1080,6 +1156,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const tab = btn.dataset.tab;
       if (tab) {
         playSound('click');
+        if (tab === "new") {
+          resetForm();
+        }
         app.switchTab(tab);
       }
     });
@@ -1339,11 +1418,15 @@ export const app = {
       setTimeout(() => mapInstance.invalidateSize(), 150);
     }
   },
+  openNewAppointmentForm: () => {
+    resetForm();
+    app.switchTab("new");
+  },
   selectAndGuideById: (id) => {
     const appt = (window.__appointments || loadLocalAppointments()).find(a => a.id == id);
     if (appt) selectAndGuide(appt);
   },
-  cancelEdit: resetForm,
+  cancelEdit,
   launchConfetti,
   playSound
 };
