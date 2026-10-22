@@ -483,52 +483,80 @@ function checkImminentDepartures(list) {
   const todayStr = now.toISOString().split("T")[0];
   const todayAppts = list.filter(a => a.date === todayStr);
 
-  feed.innerHTML = "";
-  let urgentCount = 0;
-  let mostUrgent = null;
-  let minDiff = Infinity;
+  if (todayAppts.length === 0) {
+    const upcoming = list
+      .filter(a => a.date >= todayStr)
+      .sort((a, b) => `${a.date} ${a.heure}`.localeCompare(`${b.date} ${b.heure}`))
+      .slice(0, 4);
 
-  todayAppts.forEach(a => {
-    if (!a.heure) return;
-    const [h, m] = a.heure.split(":").map(Number);
-    const rdvDate = new Date();
-    rdvDate.setHours(h, m, 0, 0);
-
-    const diffMinutes = Math.round((rdvDate - now) / 60000);
-    const lead = a.alerte_minutes || 30;
-
-    // Créer la carte d'alerte dans l'onglet alertes
-    const item = document.createElement("div");
-    item.className = "alert-item-card";
-
-    let statusText = "";
-    if (diffMinutes < 0) {
-      statusText = `Passé depuis ${Math.abs(diffMinutes)} min`;
-    } else if (diffMinutes === 0) {
-      statusText = "Départ maintenant !";
+    if (upcoming.length > 0) {
+      feed.innerHTML = `<div style="font-size:0.75rem; font-weight:800; color:var(--dk-gold); text-transform:uppercase; margin-bottom:0.6rem; letter-spacing:0.5px;">Prochaines alertes planifiées</div>`;
+      upcoming.forEach(a => {
+        const item = document.createElement("div");
+        item.className = "alert-item-card";
+        const lead = a.alerte_minutes || 30;
+        const leadText = lead >= 60 ? `${Math.round(lead / 60)}h` : `${lead} min`;
+        item.innerHTML = `
+          <div class="alert-item-time">${a.heure}</div>
+          <div class="alert-item-text">
+            <div class="alert-item-title">${a.titre}</div>
+            <div class="alert-item-sub">👤 ${a.user} • 📅 ${a.date} • 🔔 Rappel -${leadText}</div>
+          </div>
+          <button class="mini-pill-btn secondary" onclick="app.selectAndGuideById('${a.id}')">Voir</button>
+        `;
+        feed.appendChild(item);
+      });
     } else {
-      statusText = `Dans ${diffMinutes} min (Alerte à -${lead} min)`;
+      feed.innerHTML = `
+        <div style="text-align:center; padding:1.5rem 1rem; color:var(--text-muted); font-size:0.85rem;">
+          <div style="font-size:1.8rem; margin-bottom:0.4rem;">🔔</div>
+          Toutes les alertes sont à jour. Les rappels sonores se déclencheront selon le délai configuré.
+        </div>
+      `;
     }
+  } else {
+    todayAppts.forEach(a => {
+      if (!a.heure) return;
+      const [h, m] = a.heure.split(":").map(Number);
+      const rdvDate = new Date();
+      rdvDate.setHours(h, m, 0, 0);
 
-    item.innerHTML = `
-      <div class="alert-item-time">${a.heure}</div>
-      <div class="alert-item-text">
-        <div class="alert-item-title">${a.titre}</div>
-        <div class="alert-item-sub">👤 ${a.user} • 📍 ${a.adresse || "Dunkerque"} • ${statusText}</div>
-      </div>
-      <button class="mini-pill-btn" onclick="app.selectAndGuideById('${a.id}')">Guider</button>
-    `;
-    feed.appendChild(item);
+      const diffMinutes = Math.round((rdvDate - now) / 60000);
+      const lead = a.alerte_minutes || 30;
 
-    // Détection imminente (entre 0 et le délai de prévenance)
-    if (diffMinutes >= 0 && diffMinutes <= lead) {
-      urgentCount++;
-      if (diffMinutes < minDiff) {
-        minDiff = diffMinutes;
-        mostUrgent = a;
+      // Créer la carte d'alerte dans l'onglet alertes
+      const item = document.createElement("div");
+      item.className = "alert-item-card";
+
+      let statusText = "";
+      if (diffMinutes < 0) {
+        statusText = `Passé depuis ${Math.abs(diffMinutes)} min`;
+      } else if (diffMinutes === 0) {
+        statusText = "Départ maintenant !";
+      } else {
+        statusText = `Dans ${diffMinutes} min (Alerte à -${lead} min)`;
       }
-    }
-  });
+
+      item.innerHTML = `
+        <div class="alert-item-time">${a.heure}</div>
+        <div class="alert-item-text">
+          <div class="alert-item-title">${a.titre}</div>
+          <div class="alert-item-sub">👤 ${a.user} • 📍 ${a.adresse || "Dunkerque"} • ${statusText}</div>
+        </div>
+        <button class="mini-pill-btn" onclick="app.selectAndGuideById('${a.id}')">Guider</button>
+      `;
+      feed.appendChild(item);
+
+      // Détection imminente (entre 0 et le délai de prévenance)
+      if (diffMinutes >= 0 && diffMinutes <= lead) {
+        urgentCount++;
+        if (diffMinutes < minDiff) {
+          minDiff = diffMinutes;
+          mostUrgent = a;
+        }
+      }
+    });
+  }
 
   if (badgeCount) {
     if (urgentCount > 0) {
@@ -547,6 +575,112 @@ function checkImminentDepartures(list) {
   } else {
     banner.classList.add("hidden");
   }
+}
+
+// =============================================================
+// GESTIONNAIRE D'ALERTES ET NOTIFICATIONS (Dunkirk IT)
+// =============================================================
+export function triggerSystemNotification(title, body, icon = "icons/icon-192.png") {
+  if (!("Notification" in window)) return;
+  if (Notification.permission === "granted") {
+    try {
+      new Notification(title, {
+        body,
+        icon,
+        badge: icon
+      });
+    } catch (e) {
+      console.warn("Erreur déclenchement notification:", e);
+    }
+  }
+}
+
+function formatFrenchFullDate(dateStr, timeStr) {
+  if (!dateStr) return timeStr || "--";
+  try {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    const days = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+    const months = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
+    const dayName = days[dateObj.getDay()] || "";
+    const monthName = months[dateObj.getMonth()] || "";
+    return `${dayName} ${d} ${monthName}${timeStr ? ` à ${timeStr}` : ""}`;
+  } catch (e) {
+    return `${dateStr} à ${timeStr}`;
+  }
+}
+
+export function showAppointmentAlert(appt, isNew = true) {
+  const modal = document.getElementById("new-rdv-alert-modal");
+  if (!modal) return;
+
+  const headingEl = modal.querySelector(".alert-modal-heading");
+  if (headingEl) {
+    headingEl.textContent = isNew ? "🚨 Alerte : Nouveau Rendez-vous !" : "🔔 Rendez-vous Mis à Jour !";
+  }
+
+  const userPill = document.getElementById("alert-modal-user");
+  if (userPill) {
+    userPill.className = "alert-user-pill";
+    if (appt.user === "Dorianne") {
+      userPill.classList.add("dorianne");
+      userPill.textContent = "👩 Dorianne";
+    } else if (appt.user === "Christophe") {
+      userPill.classList.add("christophe");
+      userPill.textContent = "👨 Christophe";
+    } else {
+      userPill.classList.add("both");
+      userPill.textContent = "👥 Tous les deux";
+    }
+  }
+
+  const titleEl = document.getElementById("alert-modal-title");
+  if (titleEl) titleEl.textContent = appt.titre || "Rendez-vous";
+
+  const dtEl = document.getElementById("alert-modal-datetime");
+  if (dtEl) dtEl.textContent = formatFrenchFullDate(appt.date, appt.heure);
+
+  const addrEl = document.getElementById("alert-modal-address");
+  if (addrEl) addrEl.textContent = appt.adresse || "Dunkerque (non précisée)";
+
+  const contactRow = document.getElementById("alert-modal-contact-row");
+  const contactEl = document.getElementById("alert-modal-contact");
+  if (contactRow && contactEl) {
+    if (appt.contact || appt.telephone) {
+      contactRow.style.display = "flex";
+      contactEl.textContent = `${appt.contact || ""}${appt.telephone ? ` (${appt.telephone})` : ""}`;
+    } else {
+      contactRow.style.display = "none";
+    }
+  }
+
+  const lead = appt.alerte_minutes || 30;
+  const leadText = lead >= 60 ? `${Math.round(lead / 60)}h` : `${lead} min`;
+  const reminderEl = document.getElementById("alert-modal-reminder-text");
+  if (reminderEl) {
+    reminderEl.textContent = `Rappel sonore & notification programmés ${leadText} avant le départ`;
+  }
+  const timeLeadSub = document.getElementById("alert-modal-time-lead");
+  if (timeLeadSub) {
+    timeLeadSub.textContent = `Alerte active (-${leadText})`;
+  }
+
+  modal.dataset.rdvId = String(appt.id);
+  modal.classList.remove("hidden");
+
+  // Alerte sonore et célébration
+  playSound('carillon');
+
+  // Notification Web / Mobile sur smartphone
+  triggerSystemNotification(
+    isNew ? `🚨 Nouveau rendez-vous pour ${appt.user}` : `🔔 Rendez-vous mis à jour (${appt.user})`,
+    `${appt.titre} • ${formatFrenchFullDate(appt.date, appt.heure)} (Rappel -${leadText})`
+  );
+}
+
+export function closeAppointmentAlert() {
+  const modal = document.getElementById("new-rdv-alert-modal");
+  if (modal) modal.classList.add("hidden");
 }
 
 // =============================================================
@@ -755,6 +889,17 @@ async function submitForm(e) {
   playSound('carillon');
   launchConfetti();
   showToast(id ? "Rendez-vous mis à jour !" : "Nouveau rendez-vous planifié !", "🎉");
+
+  // Déclencher l'alerte complète pour l'utilisateur
+  const targetAppt = local.find(a => String(a.id) === String(id || createdLocalId)) || { ...data, id: createdLocalId };
+  showAppointmentAlert(targetAppt, !id);
+
+  // Mémoriser l'ID pour ne pas re-déclencher une double alerte au prochain sync
+  try {
+    const knownIds = JSON.parse(localStorage.getItem("dunkirk_known_ids") || "[]");
+    knownIds.push(String(targetAppt.id));
+    localStorage.setItem("dunkirk_known_ids", JSON.stringify(knownIds));
+  } catch (e) {}
 
   resetForm();
   app.switchTab("planning");
@@ -1057,6 +1202,27 @@ async function loadAndRender() {
         alerte_minutes: r.AlerteMinutes || r.alerte_minutes || 30,
       }));
       if (appointments.length > 0) {
+        // Détection des nouveaux rendez-vous créés par un autre utilisateur
+        try {
+          const storedKnown = JSON.parse(localStorage.getItem("dunkirk_known_ids") || "[]");
+          const currentIds = appointments.map(a => String(a.id));
+          if (storedKnown.length > 0) {
+            const brandNew = appointments.filter(a => !storedKnown.includes(String(a.id)));
+            if (brandNew.length > 0) {
+              const first = brandNew[0];
+              showToast(`Nouveau RDV reçu pour ${first.user} : ${first.titre}`, "🔔");
+              playSound('carillon');
+              triggerSystemNotification(
+                `🔔 Nouveau rendez-vous pour ${first.user}`,
+                `${first.titre} le ${first.date} à ${first.heure}`
+              );
+            }
+          }
+          localStorage.setItem("dunkirk_known_ids", JSON.stringify(currentIds));
+        } catch (e) {
+          console.warn("Erreur vérification alertes sync:", e);
+        }
+
         saveLocalAppointments(appointments);
       } else {
         appointments = loadLocalAppointments();
@@ -1253,6 +1419,52 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("urgent-alert-banner")?.classList.add("hidden");
   });
 
+  // Gestionnaire de la Modal Alerte Rendez-vous
+  document.getElementById("btn-close-alert-modal")?.addEventListener("click", closeAppointmentAlert);
+  document.getElementById("alert-modal-btn-ok")?.addEventListener("click", closeAppointmentAlert);
+  document.getElementById("alert-modal-btn-planning")?.addEventListener("click", () => {
+    closeAppointmentAlert();
+    app.switchTab("planning");
+  });
+  document.getElementById("alert-modal-btn-guide")?.addEventListener("click", () => {
+    const modal = document.getElementById("new-rdv-alert-modal");
+    const id = modal?.dataset.rdvId;
+    closeAppointmentAlert();
+    if (id) {
+      app.selectAndGuideById(id);
+    } else {
+      app.switchTab("guidance");
+    }
+  });
+
+  // Activation des notifications système Web / Mobile
+  const btnReqNotif = document.getElementById("btn-request-notifications");
+  if (btnReqNotif) {
+    if ("Notification" in window && Notification.permission === "granted") {
+      btnReqNotif.textContent = "Activé ✅";
+      btnReqNotif.classList.add("secondary");
+    }
+    btnReqNotif.addEventListener("click", async () => {
+      if (!("Notification" in window)) {
+        showToast("Notifications non supportées sur ce navigateur", "⚠️");
+        return;
+      }
+      try {
+        const perm = await Notification.requestPermission();
+        if (perm === "granted") {
+          btnReqNotif.textContent = "Activé ✅";
+          btnReqNotif.classList.add("secondary");
+          showToast("Notifications Web & Mobiles activées !", "🔔");
+          triggerSystemNotification("🔔 Dunkirk RDV Activé", "Vous recevrez une alerte pour chaque nouveau rendez-vous !");
+        } else {
+          showToast("Notifications refusées", "❌");
+        }
+      } catch (e) {
+        console.warn("Erreur demande permission notifications:", e);
+      }
+    });
+  }
+
   // 10. Boîte à Sons interactive (Web Audio Synth Dunkirk IT)
   document.querySelectorAll(".btn-fun-sound").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -1428,7 +1640,10 @@ export const app = {
   },
   cancelEdit,
   launchConfetti,
-  playSound
+  playSound,
+  showAppointmentAlert,
+  closeAppointmentAlert,
+  triggerSystemNotification
 };
 
 window.app = app;
