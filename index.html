@@ -10,7 +10,7 @@
   <title>Dunkirk RDV & Guidage | Dorianne & Christophe - Dunkirk Informatique</title>
   
   <link rel="manifest" href="./manifest.json">
-  <link rel="icon" type="image/png" href="./icons/icon-192.png">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23DDA727' stroke-width='2'%3E%3Cpath d='M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z'/%3E%3Cpath d='m9 12 2 2 4-4'/%3E%3C/svg%3E">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   
   <!-- Polices Google Fonts Premium -->
@@ -22,7 +22,2138 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
   
   <!-- Styles CSS -->
-  <link rel="stylesheet" href="./css/styles.css">
+  <style>
+/* =============================================================
+   styles.css – Dunkirk RDV & Guidage (Look Dunkirk Informatique)
+   Palette officielle: #07162C (Dark), #0B2244 (Navy), #DDA727 (Or Flandre)
+   ============================================================= */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+  /* Charte Dunkirk Informatique */
+  --dk-dark: #07162C;
+  --dk-navy: #0B2244;
+  --dk-navy-light: #13335F;
+  --dk-navy-card: rgba(11, 34, 68, 0.78);
+  --dk-navy-trans: rgba(7, 22, 44, 0.85);
+  --dk-gold: #DDA727;
+  --dk-gold-hover: #C6931E;
+  --dk-gold-light: #FDF7E7;
+  --dk-gold-glow: 0 4px 20px -2px rgba(221, 167, 39, 0.35);
+  --dk-gold-glow-lg: 0 10px 30px -4px rgba(221, 167, 39, 0.45);
+  
+  /* Textes & Nuances */
+  --text-white: #FFFFFF;
+  --text-light: #F1F5F9;
+  --text-muted: #94A3B8;
+  --text-dark: #07162C;
+  --border-gold: rgba(221, 167, 39, 0.3);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+
+  /* Couleurs sémantiques fun */
+  --color-dorianne: #EC4899;
+  --color-dorianne-bg: rgba(236, 72, 153, 0.15);
+  --color-christophe: #38BDF8;
+  --color-christophe-bg: rgba(56, 189, 248, 0.15);
+  --color-success: #10B981;
+  --color-danger: #EF4444;
+  --color-warning: #F59E0B;
+  
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-full: 9999px;
+  --shadow-card: 0 10px 30px -5px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--border-gold);
+  --transition-fast: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--dk-dark);
+  color: var(--text-light);
+  overflow: hidden;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: 
+    radial-gradient(circle at 10% 15%, rgba(221, 167, 39, 0.12) 0%, transparent 40%),
+    radial-gradient(circle at 90% 85%, rgba(19, 51, 95, 0.5) 0%, transparent 50%),
+    linear-gradient(180deg, #07162C 0%, #050E1C 100%);
+}
+
+/* Background Cyber Grid subtil façon Dunkirk Informatique */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: 
+    linear-gradient(to right, rgba(221, 167, 39, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(221, 167, 39, 0.03) 1px, transparent 1px);
+  background-size: 28px 28px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+#confetti-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 99999;
+}
+
+#app-container {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  z-index: 1;
+}
+
+/* =============================================================
+   En-tête Mobile Dunkirk Informatique
+   ============================================================= */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.85rem 1rem;
+  background: rgba(7, 22, 44, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-gold);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  z-index: 20;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.brand-logo-shield {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--dk-navy) 0%, var(--dk-dark) 100%);
+  border: 1.5px solid var(--dk-gold);
+  box-shadow: var(--dk-gold-glow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  animation: floatSubtle 4s ease-in-out infinite;
+}
+
+.brand-logo-shield::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(60deg, transparent, rgba(221, 167, 39, 0.2), transparent);
+  transform: rotate(30deg);
+  animation: shineSweep 4s infinite;
+}
+
+@keyframes floatSubtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+@keyframes shineSweep {
+  0% { transform: translateX(-100%) rotate(30deg); }
+  20%, 100% { transform: translateX(100%) rotate(30deg); }
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-text h1 {
+  font-size: 1.15rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  color: var(--text-white);
+  line-height: 1.1;
+}
+
+.brand-text .sub-brand {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--dk-gold);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+/* Badge Statut Cloud Baserow */
+.badge-status-cloud {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(11, 34, 68, 0.9);
+  border: 1px solid rgba(221, 167, 39, 0.3);
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-light);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.badge-status-cloud .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: var(--text-muted);
+}
+
+.badge-status-cloud.online {
+  border-color: rgba(16, 185, 129, 0.5);
+  color: #A7F3D0;
+}
+.badge-status-cloud.online .dot {
+  background-color: var(--color-success);
+  box-shadow: 0 0 8px var(--color-success);
+}
+
+.badge-status-cloud.offline {
+  border-color: rgba(245, 158, 11, 0.5);
+  color: #FDE68A;
+}
+.badge-status-cloud.offline .dot {
+  background-color: var(--color-warning);
+}
+
+.badge-status-cloud:hover {
+  transform: scale(1.04);
+}
+
+/* Boutons Icone Header */
+.icon-btn {
+  background: rgba(11, 34, 68, 0.8);
+  border: 1px solid var(--border-gold);
+  color: var(--dk-gold);
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  transition: var(--transition-bounce);
+}
+
+.icon-btn:hover {
+  background: var(--dk-gold);
+  color: var(--dk-dark);
+  box-shadow: var(--dk-gold-glow);
+  transform: scale(1.08);
+}
+
+.icon-btn.active {
+  background: linear-gradient(135deg, var(--dk-gold) 0%, #C6931E 100%);
+  color: var(--dk-dark);
+  box-shadow: var(--dk-gold-glow);
+}
+
+.icon-btn.fun-pulse {
+  animation: pulseGold 2s infinite;
+}
+
+@keyframes pulseGold {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(221, 167, 39, 0.5); }
+  50% { box-shadow: 0 0 0 8px rgba(221, 167, 39, 0); }
+}
+
+/* =============================================================
+   Sélecteur d'Utilisateurs Stylé (Dorianne / Christophe / Tous)
+   ============================================================= */
+.user-switch-bar {
+  padding: 0.6rem 1rem;
+  background: rgba(7, 22, 44, 0.6);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.user-toggle-group {
+  display: flex;
+  gap: 0.5rem;
+  background: rgba(11, 34, 68, 0.6);
+  padding: 4px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(221, 167, 39, 0.2);
+}
+
+.user-pill-btn {
+  flex: 1;
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  border-radius: var(--radius-full);
+  padding: 0.45rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  transition: var(--transition-bounce);
+}
+
+.user-pill-btn .avatar-icon {
+  font-size: 1rem;
+}
+
+.user-pill-btn:hover {
+  color: var(--text-white);
+  transform: translateY(-1px);
+}
+
+.user-pill-btn.active {
+  background: linear-gradient(135deg, var(--dk-gold) 0%, #B47C10 100%);
+  color: var(--dk-dark);
+  box-shadow: 0 2px 10px rgba(221, 167, 39, 0.4);
+}
+
+.user-pill-btn.active .avatar-icon {
+  transform: scale(1.15);
+}
+
+/* =============================================================
+   Bannière d'alerte imminente Dunkirk IT
+   ============================================================= */
+.urgent-banner {
+  background: linear-gradient(90deg, #B45309 0%, #D97706 50%, #B45309 100%);
+  color: #FFFFFF;
+  padding: 0.65rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-bottom: 1px solid rgba(253, 230, 138, 0.4);
+  box-shadow: 0 4px 15px rgba(217, 119, 6, 0.4);
+  z-index: 15;
+}
+
+.urgent-banner.hidden {
+  display: none;
+}
+
+.alert-icon-pulse {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pulseIcon 1.5s infinite;
+}
+
+@keyframes pulseIcon {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.banner-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.banner-title {
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.banner-subtitle {
+  font-size: 0.72rem;
+  opacity: 0.95;
+}
+
+.btn-banner-action {
+  background: #FFFFFF;
+  color: #B45309;
+  border: none;
+  font-weight: 800;
+  font-size: 0.75rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.btn-banner-action:hover {
+  background: var(--dk-gold);
+  color: var(--dk-dark);
+}
+
+.btn-banner-close {
+  background: none;
+  border: none;
+  color: #FFFFFF;
+  font-size: 1.3rem;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+/* =============================================================
+   App Main & Tab Views
+   ============================================================= */
+.app-main {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 80px; /* Espace pour la bottom nav */
+}
+
+.app-main::-webkit-scrollbar {
+  width: 6px;
+}
+.app-main::-webkit-scrollbar-track {
+  background: var(--dk-dark);
+}
+.app-main::-webkit-scrollbar-thumb {
+  background: var(--dk-navy);
+  border-radius: 3px;
+}
+.app-main::-webkit-scrollbar-thumb:hover {
+  background: var(--dk-gold);
+}
+
+.tab-view {
+  display: none;
+  padding: 1rem;
+  animation: fadeInTab 0.25s ease-out;
+}
+
+.tab-view.active {
+  display: block;
+}
+
+@keyframes fadeInTab {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* =============================================================
+   Stats & Fun Bar
+   ============================================================= */
+.section-top-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-bottom: 1.2rem;
+}
+
+.quick-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+}
+
+.stat-card {
+  background: var(--dk-navy-card);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 0.5rem;
+  text-align: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+  transition: var(--transition-bounce);
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--dk-gold);
+  box-shadow: var(--dk-gold-glow);
+}
+
+.stat-number {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--dk-gold);
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+
+.stat-caption {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.stat-card.primary-gradient {
+  background: linear-gradient(135deg, rgba(221, 167, 39, 0.2) 0%, rgba(11, 34, 68, 0.9) 100%);
+  border-color: var(--dk-gold);
+}
+.stat-card.primary-gradient .stat-number {
+  color: #FFFFFF;
+  text-shadow: 0 0 10px rgba(221, 167, 39, 0.6);
+}
+
+/* Barre de recherche chic */
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 0.65rem 2.5rem 0.65rem 1rem;
+  background: rgba(11, 34, 68, 0.85);
+  border: 1px solid rgba(221, 167, 39, 0.3);
+  border-radius: var(--radius-md);
+  color: var(--text-white);
+  font-family: inherit;
+  font-size: 0.85rem;
+  transition: var(--transition-fast);
+}
+
+.search-box input:focus {
+  outline: none;
+  border-color: var(--dk-gold);
+  box-shadow: 0 0 15px rgba(221, 167, 39, 0.3);
+}
+
+.search-box .search-icon {
+  position: absolute;
+  right: 0.85rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  color: var(--dk-gold);
+  pointer-events: none;
+}
+
+.clear-btn {
+  position: absolute;
+  right: 2.2rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+/* Filtres de catégorie (chips défilants) */
+.category-filters-container {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.category-filters-container::-webkit-scrollbar {
+  height: 3px;
+}
+.category-filters-container::-webkit-scrollbar-thumb {
+  background: var(--dk-gold);
+  border-radius: 2px;
+}
+
+.category-filters {
+  display: flex;
+  gap: 0.45rem;
+  white-space: nowrap;
+}
+
+.filter-chip {
+  background: rgba(11, 34, 68, 0.85);
+  border: 1px solid rgba(221, 167, 39, 0.25);
+  color: var(--text-light);
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-full);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: var(--transition-bounce);
+}
+
+.filter-chip:hover {
+  border-color: var(--dk-gold);
+  transform: translateY(-1px);
+}
+
+.filter-chip.active {
+  background: var(--dk-gold);
+  color: var(--dk-dark);
+  border-color: var(--dk-gold);
+  font-weight: 800;
+  box-shadow: 0 2px 10px rgba(221, 167, 39, 0.4);
+}
+
+/* Entête de liste */
+.list-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.list-section-header h2 {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-white);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.mini-btn {
+  background: rgba(11, 34, 68, 0.8);
+  border: 1px solid var(--border-gold);
+  color: var(--dk-gold);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.mini-btn:hover {
+  background: var(--dk-gold);
+  color: var(--dk-dark);
+  transform: rotate(180deg);
+}
+
+/* =============================================================
+   Cartes Rendez-vous Style Dunkirk Informatique Fun
+   ============================================================= */
+.cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.appointment-card {
+  background: var(--dk-navy-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  position: relative;
+  overflow: hidden;
+  transition: var(--transition-bounce);
+  cursor: pointer;
+}
+
+.appointment-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--dk-gold);
+  transition: width 0.2s ease;
+}
+
+.appointment-card.user-dorianne::before {
+  background: var(--color-dorianne);
+}
+
+.appointment-card.user-christophe::before {
+  background: var(--color-christophe);
+}
+
+.appointment-card:hover {
+  transform: translateY(-3px) scale(1.01);
+  border-color: var(--dk-gold);
+  box-shadow: 0 8px 25px rgba(221, 167, 39, 0.25);
+}
+
+.card-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+  gap: 0.5rem;
+}
+
+.badge-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.user-mini-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: rgba(221, 167, 39, 0.15);
+  border: 1px solid rgba(221, 167, 39, 0.4);
+  color: var(--dk-gold);
+}
+
+.user-mini-badge.dorianne {
+  background: var(--color-dorianne-bg);
+  border-color: var(--color-dorianne);
+  color: #F472B6;
+}
+
+.user-mini-badge.christophe {
+  background: var(--color-christophe-bg);
+  border-color: var(--color-christophe);
+  color: #7DD3FC;
+}
+
+.dest-badge {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #E2E8F0;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.card-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-white);
+  margin-bottom: 0.4rem;
+  line-height: 1.3;
+}
+
+.card-meta-line {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--dk-gold);
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+
+.card-address-line {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.3;
+  margin-bottom: 0.75rem;
+}
+
+.card-contact-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: #CBD5E1;
+  background: rgba(7, 22, 44, 0.6);
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.75rem;
+}
+
+/* Barre d'action rapide sur la carte */
+.card-quick-actions {
+  display: flex;
+  gap: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 0.65rem;
+}
+
+.btn-card-action {
+  flex: 1;
+  background: rgba(11, 34, 68, 0.9);
+  border: 1px solid rgba(221, 167, 39, 0.3);
+  color: var(--text-white);
+  padding: 0.45rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  transition: var(--transition-bounce);
+}
+
+.btn-card-action:hover {
+  background: var(--dk-gold);
+  color: var(--dk-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(221, 167, 39, 0.3);
+}
+
+.btn-card-action.btn-depart {
+  background: linear-gradient(135deg, var(--dk-gold) 0%, #B47C10 100%);
+  color: var(--dk-dark);
+  font-weight: 800;
+  border: none;
+}
+
+.btn-card-action.btn-depart:hover {
+  box-shadow: var(--dk-gold-glow);
+  transform: scale(1.03);
+}
+
+/* =============================================================
+   État vide (Empty State)
+   ============================================================= */
+.empty-state {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  background: var(--dk-navy-card);
+  border: 1px dashed var(--border-gold);
+  border-radius: var(--radius-lg);
+  margin-top: 1rem;
+}
+
+.empty-state.hidden {
+  display: none;
+}
+
+.empty-state .empty-icon {
+  font-size: 3.5rem;
+  margin-bottom: 0.75rem;
+  animation: floatSubtle 3s ease-in-out infinite;
+}
+
+.empty-state h3 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-white);
+  margin-bottom: 0.35rem;
+}
+
+.empty-state p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 1.2rem;
+}
+
+/* =============================================================
+   Formulaires (Nouveau RDV / Edition)
+   ============================================================= */
+.form-container {
+  max-width: 650px;
+  margin: 0 auto;
+  background: var(--dk-navy-card);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-card);
+}
+
+.form-header {
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.form-header h2 {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: var(--text-white);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.form-header p {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--dk-gold);
+  margin-bottom: 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.form-label .req {
+  color: var(--color-danger);
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  background: rgba(7, 22, 44, 0.8);
+  border: 1px solid rgba(221, 167, 39, 0.3);
+  border-radius: var(--radius-sm);
+  color: var(--text-white);
+  font-family: inherit;
+  font-size: 0.9rem;
+  transition: var(--transition-fast);
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--dk-gold);
+  box-shadow: 0 0 15px rgba(221, 167, 39, 0.35);
+}
+
+.form-row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.form-row .col-6 {
+  flex: 1;
+}
+
+.form-hint {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 0.3rem;
+}
+
+/* Sélecteur radios pour Dorianne / Christophe */
+.user-selector-radios {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.user-radio-chip {
+  flex: 1;
+  cursor: pointer;
+}
+
+.user-radio-chip input[type="radio"] {
+  display: none;
+}
+
+.chip-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.5rem;
+  background: rgba(7, 22, 44, 0.8);
+  border: 1px solid rgba(221, 167, 39, 0.3);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-light);
+  transition: var(--transition-bounce);
+}
+
+.user-radio-chip input:checked + .chip-content.dorianne-theme {
+  background: var(--color-dorianne-bg);
+  border-color: var(--color-dorianne);
+  color: #F472B6;
+  box-shadow: 0 0 15px rgba(236, 72, 153, 0.4);
+}
+
+.user-radio-chip input:checked + .chip-content.christophe-theme {
+  background: var(--color-christophe-bg);
+  border-color: var(--color-christophe);
+  color: #7DD3FC;
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+}
+
+.user-radio-chip input:checked + .chip-content.both-theme {
+  background: rgba(221, 167, 39, 0.2);
+  border-color: var(--dk-gold);
+  color: var(--dk-gold);
+  box-shadow: var(--dk-gold-glow);
+}
+
+/* Style selector radios */
+.style-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.style-radio-label {
+  cursor: pointer;
+}
+
+.style-radio-label input {
+  display: none;
+}
+
+.style-radio-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.75rem;
+  background: rgba(7, 22, 44, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-full);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-light);
+  transition: var(--transition-bounce);
+}
+
+.style-radio-label input:checked + .style-radio-btn {
+  background: var(--dk-gold);
+  color: var(--dk-dark);
+  border-color: var(--dk-gold);
+  font-weight: 800;
+  box-shadow: 0 2px 10px rgba(221, 167, 39, 0.4);
+}
+
+/* Autocomplétion Adresse */
+.address-group {
+  position: relative;
+}
+
+.label-with-action {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.text-link-btn {
+  background: none;
+  border: none;
+  color: var(--dk-gold);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.text-link-btn:hover {
+  text-decoration: underline;
+}
+
+.address-input-wrapper {
+  position: relative;
+}
+
+.address-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--dk-navy);
+  border: 1px solid var(--dk-gold);
+  border-radius: var(--radius-sm);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 100;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+  margin-top: 4px;
+}
+
+.address-dropdown.hidden {
+  display: none;
+}
+
+.address-item {
+  padding: 0.6rem 0.8rem;
+  font-size: 0.82rem;
+  color: var(--text-light);
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: var(--transition-fast);
+}
+
+.address-item:hover {
+  background: var(--dk-gold);
+  color: var(--dk-dark);
+  font-weight: 700;
+}
+
+/* Boutons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.25rem;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+  border: none;
+  transition: var(--transition-bounce);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--dk-gold) 0%, #C6931E 100%);
+  color: var(--dk-dark);
+  box-shadow: var(--dk-gold-glow);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #FDE68A 0%, var(--dk-gold) 100%);
+  box-shadow: var(--dk-gold-glow-lg);
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background: rgba(11, 34, 68, 0.9);
+  color: var(--text-white);
+  border: 1px solid var(--border-gold);
+}
+
+.btn-secondary:hover {
+  background: var(--dk-navy-light);
+  border-color: var(--dk-gold);
+  color: var(--dk-gold);
+}
+
+.btn-danger-outline {
+  background: transparent;
+  color: #F87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.btn-danger-outline:hover {
+  background: var(--color-danger);
+  color: #FFFFFF;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+/* =============================================================
+   Guidage GPS & Trajet
+   ============================================================= */
+.guidance-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.guidance-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.guidance-header h2 {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: var(--text-white);
+}
+
+.guidance-info-card {
+  background: var(--dk-navy-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
+  padding: 1.1rem;
+  box-shadow: var(--shadow-card);
+}
+
+.info-dest-header {
+  margin-bottom: 0.4rem;
+}
+
+#guide-dest-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-white);
+  margin-top: 0.35rem;
+}
+
+.dest-addr {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.85rem;
+}
+
+.trip-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.metric-pill {
+  background: rgba(7, 22, 44, 0.75);
+  border: 1px solid rgba(221, 167, 39, 0.3);
+  padding: 0.5rem 0.4rem;
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+
+.metric-lbl {
+  display: block;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.metric-val {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: var(--dk-gold);
+  margin-top: 2px;
+}
+
+.launchers-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--dk-gold);
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.5px;
+}
+
+.launcher-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.btn-gps-app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.65rem 0.4rem;
+  border-radius: var(--radius-sm);
+  border: none;
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: var(--transition-bounce);
+  color: #FFFFFF;
+}
+
+.btn-gps-app.btn-waze {
+  background: #33CCFF;
+  color: #07162C;
+}
+
+.btn-gps-app.btn-gmaps {
+  background: #EA4335;
+}
+
+.btn-gps-app.btn-apple {
+  background: #1E293B;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-gps-app:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+}
+
+/* Carte Leaflet Stylée */
+.map-wrapper {
+  position: relative;
+  height: 320px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-gold);
+  box-shadow: var(--shadow-card);
+}
+
+#interactive-map {
+  width: 100%;
+  height: 100%;
+  background: #0B2244;
+}
+
+.map-overlay-btn {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  width: 44px;
+  height: 44px;
+  background: var(--dk-gold);
+  color: var(--dk-dark);
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--dk-gold-glow);
+  cursor: pointer;
+  z-index: 1000;
+  transition: var(--transition-bounce);
+}
+
+.map-overlay-btn:hover {
+  transform: scale(1.12);
+  background: #FFFFFF;
+}
+
+/* =============================================================
+   Centre d'Alertes & Boîte à Sons Fun Dunkirk Informatique
+   ============================================================= */
+.alerts-container {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.alerts-header {
+  margin-bottom: 1.25rem;
+}
+
+.alerts-header h2 {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: var(--text-white);
+}
+
+.alerts-header p {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.alert-settings-card {
+  background: var(--dk-navy-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+  box-shadow: var(--shadow-card);
+}
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.setting-row:last-child {
+  border-bottom: none;
+}
+
+.setting-info {
+  display: flex;
+  flex-direction: column;
+  padding-right: 1rem;
+}
+
+.setting-title {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--text-white);
+}
+
+.setting-desc {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Switch iOS / Dark Dunkirk */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+  min-width: 48px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: rgba(255, 255, 255, 0.15);
+  transition: .3s;
+  border-radius: 26px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: var(--dk-gold);
+}
+
+input:checked + .slider:before {
+  transform: translateX(22px);
+  background-color: var(--dk-dark);
+}
+
+.mini-pill-btn {
+  background: var(--dk-gold);
+  color: var(--dk-dark);
+  border: none;
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: var(--transition-bounce);
+}
+
+.mini-pill-btn:hover {
+  transform: scale(1.06);
+  box-shadow: var(--dk-gold-glow);
+}
+
+.mini-pill-btn.secondary {
+  background: rgba(11, 34, 68, 0.9);
+  color: var(--text-white);
+  border: 1px solid var(--border-gold);
+}
+
+/* Boîte à sons interactive Dunkirk IT */
+.soundboard-card {
+  background: linear-gradient(135deg, rgba(11, 34, 68, 0.9) 0%, rgba(7, 22, 44, 0.95) 100%);
+  border: 1px solid var(--dk-gold);
+  border-radius: var(--radius-md);
+  padding: 1.1rem;
+  margin-bottom: 1.25rem;
+  box-shadow: var(--dk-gold-glow);
+}
+
+.soundboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+}
+
+.soundboard-title {
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: var(--dk-gold);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.sound-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 0.6rem;
+}
+
+.btn-fun-sound {
+  background: rgba(7, 22, 44, 0.8);
+  border: 1px solid rgba(221, 167, 39, 0.35);
+  color: var(--text-white);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  transition: var(--transition-bounce);
+}
+
+.btn-fun-sound .sound-emoji {
+  font-size: 1.4rem;
+}
+
+.btn-fun-sound:hover {
+  background: var(--dk-gold);
+  color: var(--dk-dark);
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: var(--dk-gold-glow);
+}
+
+.btn-fun-sound:active {
+  transform: scale(0.95);
+}
+
+.alerts-subtitle {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-white);
+  margin-bottom: 0.75rem;
+}
+
+.alert-item-card {
+  background: var(--dk-navy-card);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-sm);
+  padding: 0.85rem;
+  margin-bottom: 0.6rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.alert-item-time {
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: var(--dk-gold);
+}
+
+.alert-item-text {
+  flex: 1;
+}
+
+.alert-item-title {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--text-white);
+}
+
+.alert-item-sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* =============================================================
+   Paramètres & Baserow
+   ============================================================= */
+.settings-container {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.settings-header {
+  margin-bottom: 1.25rem;
+}
+
+.settings-header h2 {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: var(--text-white);
+}
+
+.settings-header p {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.card-setting-block {
+  background: var(--dk-navy-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
+  padding: 1.1rem;
+  margin-bottom: 1.2rem;
+  box-shadow: var(--shadow-card);
+}
+
+.block-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.block-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(221, 167, 39, 0.15);
+  border: 1px solid var(--dk-gold);
+  color: var(--dk-gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+}
+
+.block-title-row h3 {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-white);
+}
+
+.block-desc {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.baserow-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+
+.feedback-msg {
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.feedback-msg.success {
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid var(--color-success);
+  color: #A7F3D0;
+}
+
+.feedback-msg.error {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid var(--color-danger);
+  color: #FCA5A5;
+}
+
+.feedback-msg.hidden {
+  display: none;
+}
+
+.baserow-guide {
+  margin-top: 1rem;
+  padding: 0.6rem;
+  background: rgba(7, 22, 44, 0.6);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.baserow-guide summary {
+  font-weight: 700;
+  color: var(--dk-gold);
+  cursor: pointer;
+}
+
+.guide-content {
+  margin-top: 0.5rem;
+  line-height: 1.5;
+}
+
+.guide-content ul {
+  margin-left: 1.2rem;
+  margin-top: 0.3rem;
+}
+
+.styles-badge-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.85rem;
+}
+
+.styles-badge-grid .style-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: rgba(7, 22, 44, 0.8);
+  border: 1px solid var(--border-gold);
+  color: var(--text-light);
+}
+
+.add-style-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.style-options-inline {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.emoji-input {
+  width: 70px;
+  text-align: center;
+  font-size: 1.1rem;
+}
+
+.color-picker-input {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.backup-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+/* Carte À Propos Dunkirk Informatique */
+.about-card {
+  background: linear-gradient(135deg, rgba(11, 34, 68, 0.95) 0%, rgba(7, 22, 44, 0.98) 100%);
+  border: 1.5px solid var(--dk-gold);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  box-shadow: var(--dk-gold-glow);
+}
+
+.about-header {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.about-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--dk-gold);
+  color: var(--dk-dark);
+  font-weight: 900;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--dk-gold-glow);
+}
+
+.about-header h4 {
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: var(--text-white);
+}
+
+.about-header p {
+  font-size: 0.72rem;
+  color: var(--dk-gold);
+  font-weight: 700;
+}
+
+.about-text {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+}
+
+.about-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  border-top: 1px solid rgba(221, 167, 39, 0.2);
+  padding-top: 0.5rem;
+}
+
+/* =============================================================
+   Barre de Navigation Inférieure (Bottom Nav) Dunkirk Informatique
+   ============================================================= */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: rgba(7, 22, 44, 0.95);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-top: 1px solid var(--border-gold);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 0 0.5rem;
+  box-shadow: 0 -4px 25px rgba(0, 0, 0, 0.6);
+  z-index: 50;
+}
+
+.bottom-nav .nav-item {
+  background: none;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.4rem 0.6rem;
+  transition: var(--transition-bounce);
+  position: relative;
+}
+
+.bottom-nav .nav-item svg {
+  width: 22px;
+  height: 22px;
+  margin-bottom: 2px;
+  transition: var(--transition-bounce);
+}
+
+.bottom-nav .nav-item:hover,
+.bottom-nav .nav-item.active {
+  color: var(--dk-gold);
+  transform: translateY(-2px);
+}
+
+.bottom-nav .nav-item.active svg {
+  stroke: var(--dk-gold);
+  transform: scale(1.15);
+  filter: drop-shadow(0 0 6px rgba(221, 167, 39, 0.6));
+}
+
+/* FAB Central Ajouter RDV */
+.bottom-nav .nav-fab-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--dk-gold) 0%, #B47C10 100%);
+  color: var(--dk-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--dk-gold-glow-lg);
+  margin-top: -24px;
+  border: 3px solid var(--dk-dark);
+  transition: var(--transition-bounce);
+}
+
+.bottom-nav .nav-item:hover .nav-fab-btn,
+.bottom-nav .nav-item.active .nav-fab-btn {
+  transform: rotate(90deg) scale(1.12);
+  background: linear-gradient(135deg, #FDE68A 0%, var(--dk-gold) 100%);
+}
+
+.bottom-nav .nav-fab-btn svg {
+  stroke: var(--dk-dark) !important;
+  width: 24px;
+  height: 24px;
+  margin-bottom: 0;
+}
+
+.badge-icon-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-badge {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  background: var(--color-danger);
+  color: #FFFFFF;
+  font-size: 0.65rem;
+  font-weight: 900;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+}
+
+.nav-badge.hidden {
+  display: none;
+}
+
+/* =============================================================
+   Modal Détail Rendez-vous
+   ============================================================= */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 1000;
+  opacity: 1;
+  transition: opacity 0.25s ease;
+}
+
+.modal-overlay.hidden {
+  display: none;
+}
+
+.modal-card {
+  background: var(--dk-navy);
+  border: 1.5px solid var(--dk-gold);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), var(--dk-gold-glow);
+  animation: modalPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modalPop {
+  from { transform: scale(0.9) translateY(20px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.modal-badge {
+  background: rgba(221, 167, 39, 0.15);
+  border: 1px solid var(--dk-gold);
+  color: var(--dk-gold);
+  padding: 0.25rem 0.7rem;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.modal-close:hover {
+  color: var(--dk-gold);
+  transform: scale(1.15);
+}
+
+.modal-body {
+  padding: 1.25rem;
+}
+
+.modal-body h3 {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: var(--text-white);
+  margin-bottom: 1rem;
+}
+
+.modal-meta-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.meta-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.meta-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--dk-gold);
+  margin-bottom: 2px;
+}
+
+.meta-value {
+  font-size: 0.95rem;
+  color: var(--text-light);
+  font-weight: 600;
+}
+
+.meta-flex {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.phone-chip {
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid var(--color-success);
+  color: #A7F3D0;
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: var(--transition-fast);
+}
+
+.phone-chip:hover {
+  background: var(--color-success);
+  color: #FFFFFF;
+}
+
+.phone-chip.hidden {
+  display: none;
+}
+
+.modal-notes-box {
+  margin-top: 1rem;
+  background: rgba(7, 22, 44, 0.7);
+  border: 1px solid rgba(221, 167, 39, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+}
+
+.modal-notes-box p {
+  font-size: 0.85rem;
+  color: #E2E8F0;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.modal-footer {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.modal-footer .secondary-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.modal-footer .secondary-actions .btn {
+  flex: 1;
+}
+
+/* =============================================================
+   Toasts Notifications Popup
+   ============================================================= */
+.toast-container {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  left: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 99999;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  min-width: 280px;
+  max-width: 420px;
+  background: rgba(7, 22, 44, 0.95);
+  border: 1px solid var(--dk-gold);
+  color: #FFFFFF;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), var(--dk-gold-glow);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  animation: toastSlideDown 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes toastSlideDown {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* =============================================================
+   Responsive adaptatif
+   ============================================================= */
+@media (min-width: 768px) {
+  .app-main {
+    max-width: 820px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .cards-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+</style>
 </head>
 <body>
   <!-- Canvas pour les confettis d'ambiance et de célébration -->
@@ -664,6 +2795,1361 @@
   <!-- Leaflet JS pour la cartographie -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <!-- Application JS -->
-  <script type="module" src="./js/app.js"></script>
+  <script type="module">
+// app.js – Logique enrichie & fun Dunkirk RDV & Guidage (Look Dunkirk Informatique)
+const BASEROW_BASE_URL = "https://baserow.fr.nocodespacelab.com/api";
+const BASEROW_TOKEN = "lgWHdzUYXFcvB3A7sbzXWPl337c7qlEY";
+const TABLE_ID = 1246;
+
+const apiHeaders = {
+  "Content-Type": "application/json",
+  Authorization: `Token ${BASEROW_TOKEN}`,
+};
+
+// =============================================================
+// SYNTHÉTISEUR AUDIO WEB API (Effets Fun Dunkirk IT 100% Hors-Ligne)
+// =============================================================
+let audioCtx = null;
+let soundEnabled = true;
+
+function getAudioContext() {
+  if (!audioCtx) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) {
+      audioCtx = new AudioContextClass();
+    }
+  }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+
+export function playSound(type) {
+  if (!soundEnabled) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  const now = ctx.currentTime;
+
+  try {
+    if (type === 'carillon') {
+      // Carillon Flandre Or : 4 notes harmoniques chaleureuses (A4, C#5, E5, A5)
+      const freqs = [440, 554.37, 659.25, 880];
+      freqs.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+        
+        gain.gain.setValueAtTime(0, now + idx * 0.12);
+        gain.gain.linearRampToValueAtTime(0.25, now + idx * 0.12 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.12 + 0.8);
+        
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.12);
+        osc.stop(now + idx * 0.12 + 0.85);
+      });
+    } else if (type === 'brume') {
+      // Corne de brume Port de Dunkerque (Basse puissante maritime)
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(115, now);
+      osc.frequency.exponentialRampToValueAtTime(105, now + 1.2);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(320, now);
+
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.4, now + 0.15);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.25);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 1.3);
+    } else if (type === 'vroum') {
+      // Turbo Vroum / Accélération Sportive Fun
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(130, now);
+      osc.frequency.exponentialRampToValueAtTime(520, now + 0.6);
+
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.linearRampToValueAtTime(0.3, now + 0.3);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.7);
+    } else if (type === 'cyber') {
+      // Bip Cyber Dunkirk Informatique (8-bit arpège montant)
+      const notes = [523.25, 659.25, 783.99, 1046.50];
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.05);
+
+        gain.gain.setValueAtTime(0.12, now + idx * 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.1);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.05);
+        osc.stop(now + idx * 0.05 + 0.12);
+      });
+    } else if (type === 'fanfare') {
+      // Fanfare de Victoire / Mission Accomplie
+      const chords = [
+        { f: 523.25, d: 0.1 },
+        { f: 659.25, d: 0.1 },
+        { f: 783.99, d: 0.1 },
+        { f: 1046.50, d: 0.35 }
+      ];
+      let offset = 0;
+      chords.forEach((c) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(c.f, now + offset);
+
+        gain.gain.setValueAtTime(0.25, now + offset);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + offset + c.d);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + offset);
+        osc.stop(now + offset + c.d + 0.05);
+        offset += 0.11;
+      });
+    } else if (type === 'click') {
+      // Micro-clic haptique
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(800, now);
+      gain.gain.setValueAtTime(0.05, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.05);
+    }
+  } catch (err) {
+    console.warn("Audio synth warning:", err);
+  }
+}
+
+// =============================================================
+// MOTEUR DE CONFETTIS D'AMBIANCE & CÉLÉBRATION
+// =============================================================
+export function launchConfetti() {
+  const canvas = document.getElementById("confetti-canvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const colors = ["#DDA727", "#FDE68A", "#38BDF8", "#EC4899", "#FFFFFF", "#10B981"];
+  const particles = [];
+  const count = 90;
+
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x: canvas.width / 2 + (Math.random() - 0.5) * 160,
+      y: canvas.height * 0.45,
+      vx: (Math.random() - 0.5) * 14,
+      vy: (Math.random() - 1.2) * 12,
+      size: Math.random() * 8 + 4,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      rotation: Math.random() * 360,
+      vRot: (Math.random() - 0.5) * 10,
+      alpha: 1,
+      decay: Math.random() * 0.015 + 0.008
+    });
+  }
+
+  function frame() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let active = false;
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.35; // gravité
+      p.rotation += p.vRot;
+      p.alpha -= p.decay;
+
+      if (p.alpha > 0) {
+        active = true;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, p.alpha);
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rotation * Math.PI) / 180);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 1.3);
+        ctx.restore();
+      }
+    });
+
+    if (active) {
+      requestAnimationFrame(frame);
+    } else {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+// =============================================================
+// DONNÉES DÉMO PAR DÉFAUT (Pour Dorianne & Christophe)
+// =============================================================
+const DEFAULT_APPOINTMENTS = [
+  {
+    id: 101,
+    user: "Christophe",
+    categorie: "Co-transportage",
+    titre: "Co-transportage Gare TGV Dunkerque",
+    date: new Date().toISOString().split("T")[0],
+    heure: "14:30",
+    adresse: "Place de la Gare, 59140 Dunkerque",
+    latitude: 51.0319,
+    longitude: 2.3698,
+    contact: "Marc Legrand",
+    telephone: "06 12 34 56 78",
+    alerte_minutes: 30,
+    notes: "Arrivée TGV Voie 2. Bagages volumineux prévus dans le coffre."
+  },
+  {
+    id: 102,
+    user: "Dorianne",
+    categorie: "Coiffeur",
+    titre: "Rendez-vous Coiffure & Soin Malo",
+    date: new Date().toISOString().split("T")[0],
+    heure: "16:00",
+    adresse: "Digue des Alliés, 59240 Dunkerque",
+    latitude: 51.0505,
+    longitude: 2.3995,
+    contact: "Salon L’Élégance",
+    telephone: "03 28 00 11 22",
+    alerte_minutes: 30,
+    notes: "Coupe & brushing avec Sophie. Parking facile digue."
+  },
+  {
+    id: 103,
+    user: "Tous les deux",
+    categorie: "Dépannage PC",
+    titre: "Livraison PC & Installation Pro Dunkirk IT",
+    date: new Date(Date.now() + 86400000).toISOString().split("T")[0],
+    heure: "10:00",
+    adresse: "Boulevard Sainte-Barbe, 59140 Dunkerque",
+    latitude: 51.0362,
+    longitude: 2.3785,
+    contact: "Cabinet Flandres Conseil",
+    telephone: "03 28 66 55 44",
+    alerte_minutes: 45,
+    notes: "Installation poste fixe sécurisé et configuration messagerie."
+  }
+];
+
+const DEFAULT_STYLES = [
+  { name: "Co-transportage", emoji: "🚗", color: "#38BDF8" },
+  { name: "Coiffeur", emoji: "✂️", color: "#EC4899" },
+  { name: "Médical", emoji: "🩺", color: "#10B981" },
+  { name: "Dépannage PC", emoji: "💻", color: "#DDA727" },
+  { name: "Perso", emoji: "☕", color: "#A855F7" },
+];
+
+// =============================================================
+// STOCKAGE LOCAL ET SYNCHRONISATION BASEROW
+// =============================================================
+function loadLocalAppointments() {
+  const data = localStorage.getItem("appointments_dk");
+  if (!data) {
+    saveLocalAppointments(DEFAULT_APPOINTMENTS);
+    return DEFAULT_APPOINTMENTS;
+  }
+  try {
+    return JSON.parse(data);
+  } catch (e) {
+    return DEFAULT_APPOINTMENTS;
+  }
+}
+
+function saveLocalAppointments(list) {
+  localStorage.setItem("appointments_dk", JSON.stringify(list));
+}
+
+function loadCustomStyles() {
+  const s = localStorage.getItem("custom_styles_dk");
+  return s ? JSON.parse(s) : DEFAULT_STYLES;
+}
+
+function saveCustomStyles(styles) {
+  localStorage.setItem("custom_styles_dk", JSON.stringify(styles));
+}
+
+async function apiFetch(path, options = {}) {
+  const resp = await fetch(`${BASEROW_BASE_URL}${path}`, {
+    ...options,
+    headers: { ...(options.headers || {}), ...apiHeaders },
+  });
+  if (!resp.ok) throw new Error(`Baserow request failed: ${resp.status}`);
+  return resp.json();
+}
+
+// =============================================================
+// NOTIFICATION TOAST
+// =============================================================
+function showToast(message, emoji = "✨") {
+  const container = document.getElementById("toast-container");
+  if (!container) return;
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.innerHTML = `<span style="font-size:1.2rem;">${emoji}</span><span>${message}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translateY(-10px)";
+    toast.style.transition = "all 0.3s ease";
+    setTimeout(() => toast.remove(), 300);
+  }, 3200);
+}
+
+// =============================================================
+// RENDU DES CARTES RENDEZ-VOUS
+// =============================================================
+let currentFilterUser = "all";
+let currentFilterCategory = "all";
+let currentSearchQuery = "";
+
+function formatDateTime(dateStr, timeStr) {
+  if (!dateStr) return "--";
+  const [y, m, d] = dateStr.split("-");
+  return `${d}/${m}/${y} à ${timeStr || "--:--"}`;
+}
+
+function createAppointmentCard(appt) {
+  const card = document.createElement("div");
+  const userClass = appt.user === "Dorianne" ? "user-dorianne" : (appt.user === "Christophe" ? "user-christophe" : "");
+  card.className = `appointment-card ${userClass}`;
+  card.dataset.id = appt.id;
+
+  const userEmoji = appt.user === "Dorianne" ? "👩" : (appt.user === "Christophe" ? "👨" : "👫");
+  const userBadgeClass = appt.user === "Dorianne" ? "dorianne" : (appt.user === "Christophe" ? "christophe" : "");
+
+  card.innerHTML = `
+    <div class="card-top-row">
+      <div class="badge-group">
+        <span class="user-mini-badge ${userBadgeClass}">${userEmoji} ${appt.user}</span>
+        <span class="dest-badge">${appt.categorie || "RDV"}</span>
+      </div>
+      <span style="font-size:0.75rem; color:#94A3B8; font-weight:700;">#${appt.id}</span>
+    </div>
+    <h3 class="card-title">${appt.titre || "Rendez-vous"}</h3>
+    <div class="card-meta-line">
+      <span>📅 ${formatDateTime(appt.date, appt.heure)}</span>
+    </div>
+    <div class="card-address-line">
+      <span>📍 ${appt.adresse || "Lieu non renseigné"}</span>
+    </div>
+    ${appt.contact ? `
+      <div class="card-contact-line">
+        <span>👤 ${appt.contact}</span>
+        ${appt.telephone ? `<a href="tel:${appt.telephone.replace(/\s+/g, '')}" class="phone-chip" onclick="event.stopPropagation()">📞 ${appt.telephone}</a>` : ''}
+      </div>
+    ` : ''}
+    <div class="card-quick-actions">
+      <button class="btn-card-action btn-action-guide" title="Lancer le guidage GPS">
+        🧭 Guidage
+      </button>
+      <button class="btn-card-action btn-depart" title="Départ immédiat !">
+        🚗 Départ !
+      </button>
+    </div>
+  `;
+
+  // Clic sur toute la carte pour ouvrir la vue détaillée
+  card.addEventListener("click", () => {
+    playSound('click');
+    openDetailModal(appt);
+  });
+
+  // Action rapide : Guidage direct
+  card.querySelector(".btn-action-guide").addEventListener("click", (e) => {
+    e.stopPropagation();
+    playSound('cyber');
+    selectAndGuide(appt);
+  });
+
+  // Action rapide : Départ !
+  card.querySelector(".btn-depart").addEventListener("click", (e) => {
+    e.stopPropagation();
+    playSound('vroum');
+    launchConfetti();
+    showToast(`En route pour : ${appt.titre} ! 🚗💨`, "🏁");
+    selectAndGuide(appt);
+  });
+
+  return card;
+}
+
+function renderAppointments(list) {
+  const container = document.getElementById("appointments-list");
+  if (!container) return;
+  container.innerHTML = "";
+
+  let filtered = list;
+
+  // Filtre Utilisateur (Dorianne, Christophe, all)
+  if (currentFilterUser !== "all") {
+    filtered = filtered.filter(a => a.user === currentFilterUser || a.user === "Tous les deux");
+  }
+
+  // Filtre Catégorie
+  if (currentFilterCategory !== "all") {
+    filtered = filtered.filter(a => a.categorie === currentFilterCategory);
+  }
+
+  // Recherche textuelle
+  if (currentSearchQuery.trim() !== "") {
+    const q = currentSearchQuery.toLowerCase();
+    filtered = filtered.filter(a => 
+      (a.titre && a.titre.toLowerCase().includes(q)) ||
+      (a.adresse && a.adresse.toLowerCase().includes(q)) ||
+      (a.contact && a.contact.toLowerCase().includes(q)) ||
+      (a.categorie && a.categorie.toLowerCase().includes(q))
+    );
+  }
+
+  filtered.forEach(a => container.appendChild(createAppointmentCard(a)));
+
+  const empty = document.getElementById("empty-state");
+  if (empty) {
+    if (filtered.length === 0) {
+      empty.classList.remove("hidden");
+    } else {
+      empty.classList.add("hidden");
+    }
+  }
+
+  // Mettre à jour le sélecteur dans l'onglet Guidage
+  updateGuidanceSelect(list);
+  // Vérifier les départs imminents
+  checkImminentDepartures(list);
+}
+
+function updateStats(list) {
+  const todayStr = new Date().toISOString().split("T")[0];
+  const today = list.filter(a => a.date === todayStr);
+  const upcoming = list.filter(a => a.date >= todayStr);
+
+  const elToday = document.getElementById("stats-today");
+  const elUpcoming = document.getElementById("stats-upcoming");
+  const elTotal = document.getElementById("stats-total");
+
+  if (elToday) elToday.textContent = today.length;
+  if (elUpcoming) elUpcoming.textContent = upcoming.length;
+  if (elTotal) elTotal.textContent = list.length;
+}
+
+// =============================================================
+// ALERTES & DÉPARTS IMMINENTS
+// =============================================================
+function checkImminentDepartures(list) {
+  const banner = document.getElementById("urgent-alert-banner");
+  const titleEl = document.getElementById("urgent-title");
+  const detailsEl = document.getElementById("urgent-details");
+  const feed = document.getElementById("active-alerts-feed");
+  const badgeCount = document.getElementById("alerts-badge-count");
+
+  if (!banner || !feed) return;
+
+  const now = new Date();
+  const todayStr = now.toISOString().split("T")[0];
+  const todayAppts = list.filter(a => a.date === todayStr);
+
+  feed.innerHTML = "";
+  let urgentCount = 0;
+  let mostUrgent = null;
+  let minDiff = Infinity;
+
+  todayAppts.forEach(a => {
+    if (!a.heure) return;
+    const [h, m] = a.heure.split(":").map(Number);
+    const rdvDate = new Date();
+    rdvDate.setHours(h, m, 0, 0);
+
+    const diffMinutes = Math.round((rdvDate - now) / 60000);
+    const lead = a.alerte_minutes || 30;
+
+    // Créer la carte d'alerte dans l'onglet alertes
+    const item = document.createElement("div");
+    item.className = "alert-item-card";
+
+    let statusText = "";
+    if (diffMinutes < 0) {
+      statusText = `Passé depuis ${Math.abs(diffMinutes)} min`;
+    } else if (diffMinutes === 0) {
+      statusText = "Départ maintenant !";
+    } else {
+      statusText = `Dans ${diffMinutes} min (Alerte à -${lead} min)`;
+    }
+
+    item.innerHTML = `
+      <div class="alert-item-time">${a.heure}</div>
+      <div class="alert-item-text">
+        <div class="alert-item-title">${a.titre}</div>
+        <div class="alert-item-sub">👤 ${a.user} • 📍 ${a.adresse || "Dunkerque"} • ${statusText}</div>
+      </div>
+      <button class="mini-pill-btn" onclick="app.selectAndGuideById('${a.id}')">Guider</button>
+    `;
+    feed.appendChild(item);
+
+    // Détection imminente (entre 0 et le délai de prévenance)
+    if (diffMinutes >= 0 && diffMinutes <= lead) {
+      urgentCount++;
+      if (diffMinutes < minDiff) {
+        minDiff = diffMinutes;
+        mostUrgent = a;
+      }
+    }
+  });
+
+  if (badgeCount) {
+    if (urgentCount > 0) {
+      badgeCount.textContent = urgentCount;
+      badgeCount.classList.remove("hidden");
+    } else {
+      badgeCount.classList.add("hidden");
+    }
+  }
+
+  if (mostUrgent) {
+    banner.classList.remove("hidden");
+    titleEl.textContent = `Départ imminent pour ${mostUrgent.user} !`;
+    detailsEl.textContent = `${mostUrgent.titre} à ${mostUrgent.heure} (dans ${minDiff} min)`;
+    banner.dataset.rdvId = mostUrgent.id;
+  } else {
+    banner.classList.add("hidden");
+  }
+}
+
+// =============================================================
+// MODAL DÉTAILS
+// =============================================================
+function openDetailModal(appt) {
+  const modal = document.getElementById("rdv-detail-modal");
+  if (!modal) return;
+
+  const userBadge = document.getElementById("modal-user-badge");
+  const catBadge = document.getElementById("modal-category-badge");
+  const title = document.getElementById("modal-rdv-title");
+  const datetime = document.getElementById("modal-datetime");
+  const address = document.getElementById("modal-address");
+  const contact = document.getElementById("modal-contact");
+  const callBtn = document.getElementById("modal-call-btn");
+  const alertInfo = document.getElementById("modal-alert-info");
+  const notes = document.getElementById("modal-notes");
+
+  userBadge.textContent = `${appt.user === "Dorianne" ? "👩" : (appt.user === "Christophe" ? "👨" : "👫")} ${appt.user}`;
+  catBadge.textContent = appt.categorie || "Déplacement";
+  title.textContent = appt.titre;
+  datetime.textContent = formatDateTime(appt.date, appt.heure);
+  address.textContent = appt.adresse || "Non renseigné";
+  contact.textContent = appt.contact || "Aucun contact spécifié";
+
+  if (appt.telephone) {
+    callBtn.href = `tel:${appt.telephone.replace(/\s+/g, '')}`;
+    callBtn.classList.remove("hidden");
+  } else {
+    callBtn.classList.add("hidden");
+  }
+
+  alertInfo.textContent = `${appt.alerte_minutes || 30} minutes avant le départ`;
+  notes.textContent = appt.notes || "Aucune consigne particulière.";
+
+  window.__selectedAppointment = appt;
+  modal.classList.remove("hidden");
+}
+
+function closeDetailModal() {
+  const modal = document.getElementById("rdv-detail-modal");
+  if (modal) modal.classList.add("hidden");
+}
+
+// =============================================================
+// ÉDITION ET FORMULAIRE
+// =============================================================
+function editCurrentAppointment() {
+  const appt = window.__selectedAppointment;
+  if (!appt) return;
+
+  closeDetailModal();
+  app.switchTab("new");
+
+  document.getElementById("form-heading").textContent = "Modifier le Rendez-vous";
+  document.getElementById("edit-rdv-id").value = appt.id;
+
+  // Radio user
+  const userRadio = document.querySelector(`input[name="rdv-user"][value="${appt.user}"]`);
+  if (userRadio) userRadio.checked = true;
+
+  // Radio style
+  const styleRadio = document.querySelector(`input[name="rdv-style"][value="${appt.categorie}"]`);
+  if (styleRadio) styleRadio.checked = true;
+
+  document.getElementById("rdv-title").value = appt.titre || "";
+  document.getElementById("rdv-date").value = appt.date || "";
+  document.getElementById("rdv-time").value = appt.heure || "";
+  document.getElementById("rdv-address").value = appt.adresse || "";
+  document.getElementById("rdv-lat").value = appt.latitude || "";
+  document.getElementById("rdv-lon").value = appt.longitude || "";
+  document.getElementById("rdv-contact-name").value = appt.contact || "";
+  document.getElementById("rdv-contact-phone").value = appt.telephone || "";
+  document.getElementById("rdv-alert-lead").value = appt.alerte_minutes || "30";
+  document.getElementById("rdv-notes").value = appt.notes || "";
+
+  document.getElementById("btn-cancel-edit").classList.remove("hidden");
+  document.getElementById("btn-save-rdv").textContent = "Enregistrer les modifications";
+}
+
+function deleteCurrentAppointment() {
+  const appt = window.__selectedAppointment;
+  if (!appt) return;
+
+  if (confirm(`Voulez-vous vraiment supprimer le rendez-vous "${appt.titre}" ?`)) {
+    let local = loadLocalAppointments();
+    local = local.filter(a => a.id != appt.id);
+    saveLocalAppointments(local);
+    renderAppointments(local);
+    updateStats(local);
+    closeDetailModal();
+    playSound('click');
+    showToast("Rendez-vous supprimé avec succès.", "🗑️");
+
+    // Tentative de suppression Baserow si possible
+    apiFetch(`/database/rows/table/${TABLE_ID}/${appt.id}/`, { method: "DELETE" })
+      .catch(err => console.warn("Baserow delete error:", err));
+  }
+}
+
+function resetForm() {
+  document.getElementById("appointment-form").reset();
+  document.getElementById("edit-rdv-id").value = "";
+  document.getElementById("form-heading").textContent = "Nouveau Rendez-vous";
+  document.getElementById("btn-cancel-edit").classList.add("hidden");
+  document.getElementById("btn-save-rdv").textContent = "Enregistrer le rendez-vous";
+  
+  // Date par défaut aujourd'hui
+  document.getElementById("rdv-date").value = new Date().toISOString().split("T")[0];
+}
+
+async function submitForm(e) {
+  e.preventDefault();
+  const id = document.getElementById("edit-rdv-id").value;
+
+  const data = {
+    user: document.querySelector("input[name='rdv-user']:checked")?.value || "Dorianne",
+    categorie: document.querySelector("input[name='rdv-style']:checked")?.value || "Co-transportage",
+    titre: document.getElementById("rdv-title").value.trim(),
+    date: document.getElementById("rdv-date").value,
+    heure: document.getElementById("rdv-time").value,
+    adresse: document.getElementById("rdv-address").value.trim(),
+    latitude: parseFloat(document.getElementById("rdv-lat").value) || 51.0343,
+    longitude: parseFloat(document.getElementById("rdv-lon").value) || 2.3768,
+    contact: document.getElementById("rdv-contact-name").value.trim(),
+    telephone: document.getElementById("rdv-contact-phone").value.trim(),
+    notes: document.getElementById("rdv-notes").value.trim(),
+    alerte_minutes: parseInt(document.getElementById("rdv-alert-lead").value, 10) || 30,
+  };
+
+  let local = loadLocalAppointments();
+
+  if (id) {
+    const idx = local.findIndex(a => a.id == id);
+    if (idx >= 0) {
+      local[idx] = { ...local[idx], ...data };
+    }
+  } else {
+    const newId = Date.now();
+    local.unshift({ id: newId, ...data });
+  }
+
+  saveLocalAppointments(local);
+  renderAppointments(local);
+  updateStats(local);
+
+  playSound('carillon');
+  launchConfetti();
+  showToast(id ? "Rendez-vous mis à jour !" : "Nouveau rendez-vous planifié !", "🎉");
+
+  resetForm();
+  app.switchTab("planning");
+
+  // Synchronisation asynchrone avec Baserow (capitalisé pour Baserow)
+  const baserowData = {
+    Titre: data.titre,
+    Utilisateur: data.user,
+    Categorie: data.categorie,
+    Date: data.date,
+    Heure: data.heure,
+    Adresse: data.adresse,
+    Latitude: data.latitude,
+    Longitude: data.longitude,
+    Contact: data.contact,
+    Telephone: data.telephone,
+    AlerteMinutes: data.alerte_minutes,
+    Notes: data.notes
+  };
+
+  try {
+    if (id && !isNaN(Number(id)) && Number(id) < 100000) {
+      await apiFetch(`/database/rows/table/${TABLE_ID}/${id}/?user_field_names=true`, {
+        method: "PATCH",
+        body: JSON.stringify(baserowData),
+      });
+    } else {
+      const created = await apiFetch(`/database/rows/table/${TABLE_ID}/?user_field_names=true`, {
+        method: "POST",
+        body: JSON.stringify(baserowData),
+      });
+      // Met à jour l'ID local avec le vrai ID Baserow
+      if (created && created.id) {
+        local[0].id = created.id;
+        saveLocalAppointments(local);
+      }
+    }
+    checkCloudStatus(true);
+  } catch (err) {
+    console.warn("Synchronisation Baserow différée (mode hors-ligne actif):", err);
+    checkCloudStatus(false);
+  }
+}
+
+// =============================================================
+// GUIDAGE GPS & CARTE LEAFLET
+// =============================================================
+let mapInstance = null;
+let currentMarker = null;
+
+function initMap() {
+  const mapContainer = document.getElementById("interactive-map");
+  if (!mapContainer || mapInstance) return mapInstance;
+
+  mapInstance = L.map("interactive-map", {
+    zoomControl: true,
+    attributionControl: false
+  }).setView([51.0343, 2.3768], 13); // Centre de Dunkerque
+
+  // Carte avec tuiles lisibles et modernes
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+  }).addTo(mapInstance);
+
+  return mapInstance;
+}
+
+function updateGuidanceSelect(list) {
+  const sel = document.getElementById("guidance-rdv-select");
+  if (!sel) return;
+  const currentVal = sel.value;
+
+  sel.innerHTML = `<option value="">Sélectionner un rendez-vous à guider...</option>`;
+  list.forEach(a => {
+    const opt = document.createElement("option");
+    opt.value = a.id;
+    opt.textContent = `${a.heure || "--:--"} - ${a.titre} (${a.user})`;
+    sel.appendChild(opt);
+  });
+
+  if (currentVal) sel.value = currentVal;
+}
+
+function selectAndGuide(appt) {
+  if (!appt) return;
+  app.switchTab("guidance");
+
+  const sel = document.getElementById("guidance-rdv-select");
+  if (sel) sel.value = appt.id;
+
+  showGuidance(appt);
+}
+
+function showGuidance(appt) {
+  if (!appt) return;
+  window.__guidedAppointment = appt;
+
+  document.getElementById("guide-badge-user").textContent = `${appt.user === "Dorianne" ? "👩" : (appt.user === "Christophe" ? "👨" : "👫")} ${appt.user}`;
+  document.getElementById("guide-badge-style").textContent = appt.categorie || "Trajet";
+  document.getElementById("guide-dest-title").textContent = appt.titre;
+  document.getElementById("guide-dest-address").textContent = appt.adresse || "Dunkerque";
+  document.getElementById("guide-time").textContent = appt.heure || "--:--";
+
+  const map = initMap();
+  setTimeout(() => map.invalidateSize(), 200);
+
+  const lat = parseFloat(appt.latitude) || 51.0343;
+  const lon = parseFloat(appt.longitude) || 2.3768;
+
+  if (currentMarker) map.removeLayer(currentMarker);
+
+  // Marker personnalisé avec bouclier Dunkirk IT
+  const goldIcon = L.divIcon({
+    className: 'custom-gold-marker',
+    html: `
+      <div style="background:#07162C; border:2px solid #DDA727; border-radius:50%; width:34px; height:34px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 15px rgba(221,167,39,0.7); font-size:16px;">
+        ${appt.user === "Dorianne" ? "👩" : "👨"}
+      </div>
+    `,
+    iconSize: [34, 34],
+    iconAnchor: [17, 17]
+  });
+
+  currentMarker = L.marker([lat, lon], { icon: goldIcon }).addTo(map);
+  map.setView([lat, lon], 14);
+
+  // Estimation de distance simulée par rapport au centre de Dunkerque
+  const dist = (Math.random() * 4 + 1.5).toFixed(1);
+  const dur = Math.round(dist * 2.8 + 3);
+  document.getElementById("guide-distance").textContent = `${dist} km`;
+  document.getElementById("guide-duration").textContent = `${dur} min`;
+}
+
+// Lanceurs GPS externes (Waze, Google Maps, Apple Maps)
+function launchExternalGps(appType) {
+  const appt = window.__guidedAppointment || window.__selectedAppointment;
+  if (!appt) {
+    showToast("Veuillez sélectionner un rendez-vous d'abord !", "📍");
+    return;
+  }
+
+  const lat = appt.latitude || 51.0343;
+  const lon = appt.longitude || 2.3768;
+  const encodedAddr = encodeURIComponent(appt.adresse || "Dunkerque");
+
+  playSound('vroum');
+
+  if (appType === 'waze') {
+    window.open(`https://waze.com/ul?ll=${lat},${lon}&navigate=yes`, '_blank');
+  } else if (appType === 'gmaps') {
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`, '_blank');
+  } else if (appType === 'apple') {
+    window.open(`https://maps.apple.com/?daddr=${lat},${lon}&q=${encodedAddr}`, '_blank');
+  }
+}
+
+// =============================================================
+// AUTOCOMPLÉTION ADRESSE (API Adresse Gouv France)
+// =============================================================
+let addressDebounceTimer = null;
+
+function setupAddressAutocomplete() {
+  const input = document.getElementById("rdv-address");
+  const dropdown = document.getElementById("address-suggestions");
+  if (!input || !dropdown) return;
+
+  input.addEventListener("input", () => {
+    clearTimeout(addressDebounceTimer);
+    const query = input.value.trim();
+    if (query.length < 3) {
+      dropdown.classList.add("hidden");
+      dropdown.innerHTML = "";
+      return;
+    }
+
+    addressDebounceTimer = setTimeout(async () => {
+      try {
+        const resp = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=5`);
+        if (!resp.ok) return;
+        const json = await resp.json();
+
+        dropdown.innerHTML = "";
+        if (json.features && json.features.length > 0) {
+          json.features.forEach(f => {
+            const item = document.createElement("div");
+            item.className = "address-item";
+            item.textContent = f.properties.label;
+            item.addEventListener("click", () => {
+              input.value = f.properties.label;
+              document.getElementById("rdv-lat").value = f.geometry.coordinates[1];
+              document.getElementById("rdv-lon").value = f.geometry.coordinates[0];
+              dropdown.classList.add("hidden");
+              playSound('click');
+            });
+            dropdown.appendChild(item);
+          });
+          dropdown.classList.remove("hidden");
+        } else {
+          dropdown.classList.add("hidden");
+        }
+      } catch (err) {
+        console.warn("Erreur API adresse:", err);
+      }
+    }, 280);
+  });
+
+  // Fermer quand on clique dehors
+  document.addEventListener("click", (e) => {
+    if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+      dropdown.classList.add("hidden");
+    }
+  });
+
+  // Bouton ma position actuelle
+  const posBtn = document.getElementById("btn-use-current-pos");
+  if (posBtn) {
+    posBtn.addEventListener("click", () => {
+      if (!navigator.geolocation) {
+        alert("La géolocalisation n'est pas supportée par votre navigateur.");
+        return;
+      }
+      posBtn.textContent = "📍 Recherche...";
+      navigator.geolocation.getCurrentPosition((pos) => {
+        document.getElementById("rdv-lat").value = pos.coords.latitude;
+        document.getElementById("rdv-lon").value = pos.coords.longitude;
+        input.value = "Position actuelle (Dunkerque & Flandres)";
+        posBtn.textContent = "📍 Ma position actuelle";
+        playSound('click');
+        showToast("Position GPS enregistrée !", "📍");
+      }, () => {
+        posBtn.textContent = "📍 Ma position actuelle";
+        alert("Impossible d'obtenir la position.");
+      });
+    });
+  }
+}
+
+// =============================================================
+// STATUT CLOUD & CHARGEMENT PRINCIPAL
+// =============================================================
+function checkCloudStatus(isOnline) {
+  const badge = document.getElementById("cloud-status-badge");
+  const text = document.getElementById("cloud-status-text");
+  const settingBadge = document.getElementById("cloud-badge-setting");
+
+  if (isOnline) {
+    if (badge) {
+      badge.classList.remove("offline");
+      badge.classList.add("online");
+    }
+    if (text) text.textContent = "En-ligne";
+    if (settingBadge) {
+      settingBadge.className = "badge-status-cloud online";
+      settingBadge.innerHTML = `<span class="dot"></span><span>Connecté & Sécurisé</span>`;
+    }
+  } else {
+    if (badge) {
+      badge.classList.remove("online");
+      badge.classList.add("offline");
+    }
+    if (text) text.textContent = "Hors-ligne";
+    if (settingBadge) {
+      settingBadge.className = "badge-status-cloud offline";
+      settingBadge.innerHTML = `<span class="dot"></span><span>Mode Hors-ligne (LocalStorage)</span>`;
+    }
+  }
+}
+
+async function loadAndRender() {
+  let appointments = [];
+  try {
+    const resp = await apiFetch(`/database/rows/table/${TABLE_ID}/?page_size=200&user_field_names=true`);
+    if (resp.results && resp.results.length > 0) {
+      // Filtrer les lignes vides (gabarits sans titre)
+      const validRows = resp.results.filter(r => (r.Titre && r.Titre.trim()) || (r.titre && r.titre.trim()));
+      appointments = validRows.map(r => ({
+        id: r.id,
+        user: r.Utilisateur || r.user || "Dorianne",
+        categorie: r.Categorie || r.categorie || "Déplacement",
+        titre: r.Titre || r.titre || "Rendez-vous",
+        date: r.Date || r.date || new Date().toISOString().split("T")[0],
+        heure: r.Heure || r.heure || "12:00",
+        adresse: r.Adresse || r.adresse || "",
+        latitude: r.Latitude || r.latitude || 51.0343,
+        longitude: r.Longitude || r.longitude || 2.3768,
+        contact: r.Contact || r.contact || "",
+        telephone: r.Telephone || r.telephone || "",
+        notes: r.Notes || r.notes || "",
+        alerte_minutes: r.AlerteMinutes || r.alerte_minutes || 30,
+      }));
+      if (appointments.length > 0) {
+        saveLocalAppointments(appointments);
+      } else {
+        appointments = loadLocalAppointments();
+      }
+      checkCloudStatus(true);
+    } else {
+      appointments = loadLocalAppointments();
+    }
+  } catch (err) {
+    console.warn("Baserow inaccessible, chargement des données locales :", err);
+    appointments = loadLocalAppointments();
+    checkCloudStatus(false);
+  }
+
+  window.__appointments = appointments;
+  renderAppointments(appointments);
+  updateStats(appointments);
+}
+
+// =============================================================
+// RENDU DYNAMIQUE DES STYLES & FILTRES
+// =============================================================
+function renderDynamicStyles() {
+  const styles = loadCustomStyles();
+
+  // 1. Filtres carrousel dans la vue Planning
+  const filterList = document.getElementById("category-filters-list");
+  if (filterList) {
+    filterList.innerHTML = `
+      <button class="filter-chip active" data-category="all">
+        <span>✨</span><span>Tous</span>
+      </button>
+    `;
+    styles.forEach(s => {
+      const chip = document.createElement("button");
+      chip.className = "filter-chip";
+      chip.dataset.category = s.name;
+      chip.innerHTML = `<span>${s.emoji || "🏷️"}</span><span>${s.name}</span>`;
+      chip.addEventListener("click", () => {
+        playSound('click');
+        document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active"));
+        chip.classList.add("active");
+        currentFilterCategory = s.name;
+        renderAppointments(window.__appointments || loadLocalAppointments());
+      });
+      filterList.appendChild(chip);
+    });
+
+    // Clic sur "Tous"
+    filterList.querySelector("[data-category='all']").addEventListener("click", (e) => {
+      playSound('click');
+      document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active"));
+      e.currentTarget.classList.add("active");
+      currentFilterCategory = "all";
+      renderAppointments(window.__appointments || loadLocalAppointments());
+    });
+  }
+
+  // 2. Sélecteur de styles dans le formulaire Nouveau RDV
+  const formRadios = document.getElementById("style-selector-radios");
+  if (formRadios) {
+    formRadios.innerHTML = "";
+    styles.forEach((s, idx) => {
+      const label = document.createElement("label");
+      label.className = "style-radio-label";
+      label.innerHTML = `
+        <input type="radio" name="rdv-style" value="${s.name}" ${idx === 0 ? "checked" : ""}>
+        <span class="style-radio-btn">
+          <span>${s.emoji || "🚗"}</span>
+          <span>${s.name}</span>
+        </span>
+      `;
+      formRadios.appendChild(label);
+    });
+  }
+
+  // 3. Liste dans l'onglet Paramètres
+  const customList = document.getElementById("custom-styles-list");
+  if (customList) {
+    customList.innerHTML = "";
+    styles.forEach(s => {
+      const badge = document.createElement("span");
+      badge.className = "style-badge";
+      badge.innerHTML = `<span>${s.emoji || "🚗"}</span><span>${s.name}</span>`;
+      customList.appendChild(badge);
+    });
+  }
+}
+
+// =============================================================
+// INITIALISATION DE L'APPLICATION
+// =============================================================
+document.addEventListener("DOMContentLoaded", () => {
+  // 1. Navigation par onglets
+  document.querySelectorAll(".nav-item").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const tab = btn.dataset.tab;
+      if (tab) {
+        playSound('click');
+        app.switchTab(tab);
+      }
+    });
+  });
+
+  // 2. Filtres Utilisateur (Dorianne, Christophe, Tous)
+  document.querySelectorAll(".user-pill-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      playSound('click');
+      document.querySelectorAll(".user-pill-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      currentFilterUser = btn.dataset.userFilter;
+      renderAppointments(window.__appointments || loadLocalAppointments());
+    });
+  });
+
+  // 3. Barre de recherche
+  const searchInput = document.getElementById("search-input");
+  const clearSearch = document.getElementById("clear-search-btn");
+  if (searchInput) {
+    searchInput.addEventListener("input", (e) => {
+      currentSearchQuery = e.target.value;
+      if (clearSearch) {
+        if (currentSearchQuery) clearSearch.classList.remove("hidden");
+        else clearSearch.classList.add("hidden");
+      }
+      renderAppointments(window.__appointments || loadLocalAppointments());
+    });
+  }
+  if (clearSearch) {
+    clearSearch.addEventListener("click", () => {
+      searchInput.value = "";
+      currentSearchQuery = "";
+      clearSearch.classList.add("hidden");
+      renderAppointments(window.__appointments || loadLocalAppointments());
+    });
+  }
+
+  // 4. Formulaire RDV
+  const form = document.getElementById("appointment-form");
+  if (form) form.addEventListener("submit", submitForm);
+
+  const cancelBtn = document.getElementById("btn-cancel-edit");
+  if (cancelBtn) cancelBtn.addEventListener("click", resetForm);
+
+  // 5. Modale actions
+  const closeModalBtn = document.getElementById("btn-close-modal");
+  if (closeModalBtn) closeModalBtn.addEventListener("click", closeDetailModal);
+
+  const editModalBtn = document.getElementById("modal-btn-edit");
+  if (editModalBtn) editModalBtn.addEventListener("click", editCurrentAppointment);
+
+  const deleteModalBtn = document.getElementById("modal-btn-delete");
+  if (deleteModalBtn) deleteModalBtn.addEventListener("click", deleteCurrentAppointment);
+
+  const guideModalBtn = document.getElementById("modal-btn-guide");
+  if (guideModalBtn) {
+    guideModalBtn.addEventListener("click", () => {
+      const appt = window.__selectedAppointment;
+      closeDetailModal();
+      selectAndGuide(appt);
+    });
+  }
+
+  // 6. Lanceurs GPS Externes
+  document.getElementById("btn-open-waze")?.addEventListener("click", () => launchExternalGps('waze'));
+  document.getElementById("btn-open-gmaps")?.addEventListener("click", () => launchExternalGps('gmaps'));
+  document.getElementById("btn-open-applemaps")?.addEventListener("click", () => launchExternalGps('apple'));
+
+  // 7. Sélecteur de RDV dans l'onglet Guidage
+  document.getElementById("guidance-rdv-select")?.addEventListener("change", (e) => {
+    const id = e.target.value;
+    const appt = (window.__appointments || loadLocalAppointments()).find(a => a.id == id);
+    if (appt) showGuidance(appt);
+  });
+
+  // 8. Bouton recentrer carte
+  document.getElementById("btn-recenter-user")?.addEventListener("click", () => {
+    playSound('click');
+    if (mapInstance && currentMarker) {
+      mapInstance.setView(currentMarker.getLatLng(), 15);
+    }
+  });
+
+  // 9. Bannière d'alerte imminente
+  document.getElementById("banner-action-guide")?.addEventListener("click", () => {
+    const id = document.getElementById("urgent-alert-banner")?.dataset.rdvId;
+    const appt = (window.__appointments || loadLocalAppointments()).find(a => a.id == id);
+    if (appt) selectAndGuide(appt);
+  });
+  document.getElementById("banner-dismiss")?.addEventListener("click", () => {
+    document.getElementById("urgent-alert-banner")?.classList.add("hidden");
+  });
+
+  // 10. Boîte à Sons interactive (Web Audio Synth Dunkirk IT)
+  document.querySelectorAll(".btn-fun-sound").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const sound = btn.dataset.sound;
+      playSound(sound);
+      if (sound === 'fanfare') launchConfetti();
+    });
+  });
+
+  // Bouton tester son dans paramètres alertes
+  document.getElementById("btn-test-sound")?.addEventListener("click", () => {
+    playSound('carillon');
+    showToast("Carillon Dunkirk IT testé avec succès !", "🔔");
+  });
+
+  // Bascule audio dans header
+  const toggleAudioBtn = document.getElementById("toggle-audio-btn");
+  if (toggleAudioBtn) {
+    toggleAudioBtn.addEventListener("click", () => {
+      soundEnabled = !soundEnabled;
+      toggleAudioBtn.classList.toggle("active", soundEnabled);
+      showToast(soundEnabled ? "Effets sonores activés" : "Effets sonores coupés", soundEnabled ? "🔊" : "🔇");
+    });
+  }
+
+  // Bouton confetti rapide dans le header
+  document.getElementById("quick-celebrate-btn")?.addEventListener("click", () => {
+    playSound('fanfare');
+    launchConfetti();
+    showToast("Ambiance Dunkerquoise au max ! 🥳", "⚓");
+  });
+
+  // 11. Ajout de nouveau style personnalisé
+  document.getElementById("btn-add-style")?.addEventListener("click", () => {
+    const nameInput = document.getElementById("new-style-name");
+    const emojiInput = document.getElementById("new-style-emoji");
+    const colorInput = document.getElementById("new-style-color");
+
+    const name = nameInput.value.trim();
+    if (!name) return;
+
+    const styles = loadCustomStyles();
+    styles.push({
+      name,
+      emoji: emojiInput.value.trim() || "🚗",
+      color: colorInput.value || "#DDA727"
+    });
+    saveCustomStyles(styles);
+    renderDynamicStyles();
+    nameInput.value = "";
+    playSound('click');
+    showToast(`Nouveau style "${name}" ajouté !`, "🎨");
+  });
+
+  // 12. Sauvegardes & Restauration JSON
+  document.getElementById("btn-export-json")?.addEventListener("click", () => {
+    const data = JSON.stringify(loadLocalAppointments(), null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `dunkirk-rdv-backup-${new Date().toISOString().split("T")[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    playSound('click');
+    showToast("Sauvegarde JSON téléchargée !", "💾");
+  });
+
+  document.getElementById("import-file-input")?.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const imported = JSON.parse(event.target.result);
+        if (Array.isArray(imported)) {
+          saveLocalAppointments(imported);
+          renderAppointments(imported);
+          updateStats(imported);
+          playSound('fanfare');
+          launchConfetti();
+          showToast("Données restaurées avec succès !", "✅");
+        }
+      } catch (err) {
+        alert("Fichier JSON invalide.");
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  document.getElementById("btn-reset-demo")?.addEventListener("click", () => {
+    if (confirm("Recharger les données de démonstration pour Dorianne & Christophe ?")) {
+      saveLocalAppointments(DEFAULT_APPOINTMENTS);
+      renderAppointments(DEFAULT_APPOINTMENTS);
+      updateStats(DEFAULT_APPOINTMENTS);
+      playSound('fanfare');
+      showToast("Données démo rechargées !", "✨");
+    }
+  });
+
+  // Bouton recharger dans planning
+  document.getElementById("refresh-data-btn")?.addEventListener("click", () => {
+    playSound('click');
+    loadAndRender();
+    showToast("Synchronisation actualisée !", "🔄");
+  });
+
+  // Bouton tester la connexion Baserow
+  document.getElementById("btn-test-baserow")?.addEventListener("click", async () => {
+    const feedback = document.getElementById("baserow-feedback");
+    if (!feedback) return;
+    feedback.className = "feedback-msg";
+    feedback.textContent = "Test de connexion en cours...";
+    feedback.classList.remove("hidden");
+
+    try {
+      const resp = await apiFetch(`/database/rows/table/${TABLE_ID}/?page_size=1&user_field_names=true`);
+      feedback.className = "feedback-msg success";
+      feedback.textContent = `✅ Connexion réussie à la table ${TABLE_ID} ! (${resp.count || 0} enregistrements dans Baserow)`;
+      checkCloudStatus(true);
+      playSound('carillon');
+      showToast("Connexion Baserow validée avec succès !", "⚡");
+    } catch (err) {
+      feedback.className = "feedback-msg error";
+      feedback.textContent = `❌ Erreur : ${err.message}`;
+      checkCloudStatus(false);
+    }
+  });
+
+  // Bouton synchroniser dans Baserow
+  document.getElementById("btn-sync-baserow")?.addEventListener("click", async () => {
+    playSound('click');
+    await loadAndRender();
+    showToast("Synchronisation Baserow terminée !", "🔄");
+  });
+
+  // Initialisations
+  setupAddressAutocomplete();
+  renderDynamicStyles();
+  loadAndRender();
+
+  // Date du formulaire par défaut
+  resetForm();
+
+  // Vérification périodique des alertes chaque minute
+  setInterval(() => {
+    checkImminentDepartures(window.__appointments || loadLocalAppointments());
+  }, 60000);
+});
+
+// Exportation globale pour les onclick inline
+export const app = {
+  switchTab: (name) => {
+    document.querySelectorAll(".tab-view").forEach(el => el.classList.remove("active"));
+    const target = document.getElementById(`view-${name}`);
+    if (target) target.classList.add("active");
+
+    document.querySelectorAll(".nav-item").forEach(el => el.classList.remove("active"));
+    const nav = document.querySelector(`.nav-item[data-tab='${name}']`);
+    if (nav) nav.classList.add("active");
+
+    if (name === "guidance" && mapInstance) {
+      setTimeout(() => mapInstance.invalidateSize(), 150);
+    }
+  },
+  selectAndGuideById: (id) => {
+    const appt = (window.__appointments || loadLocalAppointments()).find(a => a.id == id);
+    if (appt) selectAndGuide(appt);
+  },
+  cancelEdit: resetForm,
+  launchConfetti,
+  playSound
+};
+
+window.app = app;
+
+</script>
 </body>
 </html>
