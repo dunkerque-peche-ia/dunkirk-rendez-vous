@@ -2347,8 +2347,10 @@ input:checked + .slider:before {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
 /* =============================================================
-   MODULE D'AUTHENTIFICATION SÉCURISÉE & BACK-OFFICE ADMIN (Dunkirk IT)
+   MODULE D'AUTHENTIFICATION SÉCURISÉE & ACCÈS SMARTPHONE (Dunkirk IT)
    ============================================================= */
 
 /* Pastille Profil dans le Header */
@@ -2358,13 +2360,16 @@ input:checked + .slider:before {
   gap: 0.35rem;
   background: rgba(7, 22, 44, 0.85);
   border: 1px solid var(--border-gold);
-  padding: 0.3rem 0.6rem;
+  padding: 0.3rem 0.55rem;
   border-radius: var(--radius-full);
   font-size: 0.75rem;
   font-weight: 700;
   color: var(--text-light);
   cursor: pointer;
   transition: var(--transition-fast);
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .header-profile-badge:hover {
@@ -2380,6 +2385,7 @@ input:checked + .slider:before {
   padding: 0.1rem 0.35rem;
   border-radius: var(--radius-full);
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .header-role-tag.user {
@@ -2392,6 +2398,10 @@ input:checked + .slider:before {
 .auth-overlay {
   position: fixed;
   inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
   background: radial-gradient(circle at center, rgba(11, 34, 68, 0.98) 0%, rgba(3, 12, 24, 0.99) 100%);
   backdrop-filter: blur(25px);
   -webkit-backdrop-filter: blur(25px);
@@ -2399,7 +2409,14 @@ input:checked + .slider:before {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.2rem;
+  padding: 1.25rem 0.85rem;
+  padding-top: max(1.25rem, env(safe-area-inset-top));
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+  padding-left: max(0.85rem, env(safe-area-inset-left));
+  padding-right: max(0.85rem, env(safe-area-inset-right));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
   animation: fadeIn 0.35s ease;
 }
 
@@ -2409,15 +2426,17 @@ input:checked + .slider:before {
 
 .auth-card {
   width: 100%;
-  max-width: 420px;
-  background: rgba(7, 22, 44, 0.92);
+  max-width: 390px;
+  margin: auto; /* Permet le centrage vertical et le défilement fluide sans coupure */
+  background: rgba(7, 22, 44, 0.95);
   border: 1.5px solid var(--dk-gold);
   box-shadow: 0 15px 45px rgba(0, 0, 0, 0.8), 0 0 35px rgba(221, 167, 39, 0.25);
   border-radius: var(--radius-lg);
-  padding: 1.8rem;
+  padding: 1.6rem 1.3rem;
   text-align: center;
   position: relative;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .auth-card::before {
@@ -2431,9 +2450,9 @@ input:checked + .slider:before {
 }
 
 .auth-brand-shield {
-  width: 64px;
-  height: 64px;
-  margin: 0 auto 0.9rem;
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 0.75rem;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(221, 167, 39, 0.25) 0%, rgba(7, 22, 44, 0.8) 100%);
   border: 2px solid var(--dk-gold);
@@ -2444,23 +2463,23 @@ input:checked + .slider:before {
 }
 
 .auth-title {
-  font-size: 1.35rem;
+  font-size: 1.3rem;
   font-weight: 900;
   color: var(--text-light);
   letter-spacing: -0.01em;
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.25rem;
 }
 
 .auth-subtitle {
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   color: var(--text-muted);
-  margin-bottom: 1.4rem;
+  margin-bottom: 1.25rem;
 }
 
 .auth-user-selector {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.85rem;
+  gap: 0.75rem;
   margin-bottom: 1.25rem;
 }
 
@@ -2468,30 +2487,36 @@ input:checked + .slider:before {
   background: rgba(11, 34, 68, 0.6);
   border: 1.5px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-md);
-  padding: 0.85rem 0.5rem;
+  padding: 0.75rem 0.35rem;
   cursor: pointer;
   transition: var(--transition-bounce);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.4rem;
+  justify-content: center;
+  gap: 0.35rem;
   color: var(--text-light);
+  min-height: 84px;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .auth-user-btn .auth-avatar {
-  font-size: 2rem;
+  font-size: 1.9rem;
   line-height: 1;
 }
 
 .auth-user-btn .auth-user-name {
   font-size: 0.88rem;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .auth-user-btn .auth-user-role {
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   font-weight: 600;
   color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .auth-user-btn.active.christophe-auth {
@@ -2522,7 +2547,7 @@ input:checked + .slider:before {
 
 .auth-password-wrap label {
   display: block;
-  font-size: 0.75rem;
+  font-size: 0.76rem;
   font-weight: 700;
   color: var(--text-light);
   margin-bottom: 0.4rem;
@@ -2537,33 +2562,49 @@ input:checked + .slider:before {
 .auth-input-container input {
   width: 100%;
   padding-right: 2.8rem;
+  font-size: 16px; /* Empêche le zoom indésirable iOS Safari au focus */
+  min-height: 46px;
+  box-sizing: border-box;
 }
 
 .auth-pwd-toggle {
   position: absolute;
-  right: 0.6rem;
+  right: 0.5rem;
   background: none;
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 1.1rem;
-  padding: 0.2rem;
+  font-size: 1.15rem;
+  padding: 0.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .auth-remember-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 0.75rem;
+  gap: 0.5rem;
+  font-size: 0.74rem;
   color: var(--text-muted);
   margin-bottom: 1.25rem;
+  flex-wrap: wrap;
 }
 
 .auth-remember-row label {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.45rem;
   cursor: pointer;
+  user-select: none;
+}
+
+.auth-remember-row label input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--dk-gold);
 }
 
 .auth-error-msg {
@@ -2571,7 +2612,7 @@ input:checked + .slider:before {
   background: rgba(239, 68, 68, 0.15);
   border: 1px solid rgba(239, 68, 68, 0.4);
   border-radius: var(--radius-sm);
-  padding: 0.5rem;
+  padding: 0.55rem;
   font-size: 0.75rem;
   font-weight: 700;
   margin-bottom: 0.85rem;
@@ -2585,6 +2626,137 @@ input:checked + .slider:before {
   0%, 100% { transform: translateX(0); }
   20%, 60% { transform: translateX(-8px); }
   40%, 80% { transform: translateX(8px); }
+}
+
+/* =============================================================
+   RESPONSIVE DESIGN SMARTPHONE (ACCÈS, HEADER & ADMIN)
+   ============================================================= */
+@media (max-width: 480px) {
+  .app-header {
+    padding: 0.6rem 0.65rem;
+  }
+
+  .header-brand {
+    gap: 0.45rem;
+  }
+
+  .brand-logo-shield {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+  }
+
+  .brand-text h1 {
+    font-size: 0.98rem;
+  }
+
+  .brand-text .sub-brand {
+    font-size: 0.54rem;
+    letter-spacing: 0.16em;
+  }
+
+  .header-actions {
+    gap: 0.35rem;
+  }
+
+  .header-profile-badge {
+    padding: 0.22rem 0.45rem;
+    font-size: 0.7rem;
+    gap: 0.25rem;
+  }
+
+  .header-role-tag {
+    font-size: 0.58rem;
+    padding: 0.08rem 0.28rem;
+  }
+
+  .badge-status-cloud {
+    padding: 0.3rem 0.45rem;
+  }
+
+  .badge-status-cloud .status-label {
+    display: none; /* Cache le texte 'En ligne/Hors-ligne' sur mobile pour libérer l'espace pour l'accès */
+  }
+
+  /* Écran d'authentification sur mobile */
+  .auth-overlay {
+    padding: 0.75rem 0.6rem;
+  }
+
+  .auth-card {
+    padding: 1.25rem 0.95rem;
+    border-radius: 16px;
+  }
+
+  .auth-brand-shield {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 0.6rem;
+  }
+
+  .auth-brand-shield svg {
+    width: 26px;
+    height: 26px;
+  }
+
+  .auth-title {
+    font-size: 1.18rem;
+  }
+
+  .auth-subtitle {
+    font-size: 0.75rem;
+    margin-bottom: 0.95rem;
+  }
+
+  .auth-user-selector {
+    gap: 0.5rem;
+    margin-bottom: 0.95rem;
+  }
+
+  .auth-user-btn {
+    padding: 0.6rem 0.25rem;
+    min-height: 76px;
+  }
+
+  .auth-user-btn .auth-avatar {
+    font-size: 1.65rem;
+  }
+
+  .auth-user-btn .auth-user-name {
+    font-size: 0.82rem;
+  }
+
+  .auth-user-btn .auth-user-role {
+    font-size: 0.62rem;
+  }
+
+  .auth-password-wrap label {
+    font-size: 0.72rem;
+  }
+
+  .auth-remember-row {
+    font-size: 0.7rem;
+    margin-bottom: 1rem;
+  }
+
+  #btn-auth-unlock {
+    padding: 0.75rem 0.5rem !important;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .header-profile-badge #header-user-label {
+    display: none; /* Sur les très petits smartphones (< 360px), affiche l'avatar et le cadenas sans texte */
+  }
+
+  .auth-card {
+    padding: 1.1rem 0.75rem;
+  }
+
+  .auth-user-btn .auth-user-role {
+    font-size: 0.56rem;
+  }
 }
 
 /* =============================================================
@@ -3746,8 +3918,8 @@ input:checked + .slider:before {
           <div class="auth-password-wrap">
             <label for="auth-password-input">Mot de passe pour <span id="auth-selected-name" style="color:var(--dk-gold);">Christophe</span></label>
             <div class="auth-input-container">
-              <input type="password" id="auth-password-input" class="form-control" placeholder="Entrez votre mot de passe ou code PIN" required autofocus>
-              <button type="button" class="auth-pwd-toggle" id="auth-toggle-pwd-btn" onclick="togglePasswordVisibility('auth-password-input')">👁️</button>
+              <input type="password" id="auth-password-input" class="form-control" placeholder="Mot de passe ou PIN..." autocomplete="current-password" required autofocus>
+              <button type="button" class="auth-pwd-toggle" id="auth-toggle-pwd-btn" onclick="togglePasswordVisibility('auth-password-input')" aria-label="Afficher le mot de passe">👁️</button>
             </div>
           </div>
 
@@ -3756,9 +3928,9 @@ input:checked + .slider:before {
           <div class="auth-remember-row">
             <label>
               <input type="checkbox" id="auth-remember-me" checked>
-              <span>Rester connecté sur cet appareil</span>
+              <span>Rester connecté</span>
             </label>
-            <span style="font-size:0.68rem; color:rgba(221,167,39,0.85); font-weight:700;">Défaut: 1234</span>
+            <span style="font-size:0.7rem; color:rgba(221,167,39,0.9); font-weight:700;">Défaut: 1234</span>
           </div>
 
           <button type="submit" id="btn-auth-unlock" class="btn btn-primary btn-block" style="padding:0.75rem;">
