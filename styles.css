@@ -2113,6 +2113,184 @@ input:checked + .slider:before {
 }
 
 /* =============================================================
+   MODAL ALERTE RENDEZ-VOUS (Dunkirk IT)
+   ============================================================= */
+.alert-modal-card {
+  border: 2px solid var(--dk-gold) !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), var(--dk-gold-glow-lg) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.alert-modal-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--dk-gold), #FDE68A, var(--color-dorianne), var(--color-christophe), var(--dk-gold));
+  background-size: 200% 100%;
+  animation: goldShimmer 3s linear infinite;
+  z-index: 2;
+}
+
+@keyframes goldShimmer {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 200% 0%; }
+}
+
+.alert-modal-header {
+  background: linear-gradient(180deg, rgba(221, 167, 39, 0.12) 0%, transparent 100%);
+  border-bottom: 1px solid rgba(221, 167, 39, 0.25);
+}
+
+.alert-modal-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.alert-bell-pulse {
+  font-size: 1.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: rgba(221, 167, 39, 0.2);
+  border: 1px solid var(--dk-gold);
+  animation: bellShake 1.8s ease-in-out infinite;
+}
+
+@keyframes bellShake {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  10%, 30% { transform: rotate(-12deg) scale(1.08); }
+  20%, 40% { transform: rotate(12deg) scale(1.08); }
+  50% { transform: rotate(0deg) scale(1); }
+}
+
+.alert-modal-heading {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-white);
+  line-height: 1.2;
+}
+
+.alert-modal-sub {
+  font-size: 0.78rem;
+  color: var(--dk-gold);
+  font-weight: 600;
+}
+
+.alert-hero-box {
+  background: rgba(7, 22, 44, 0.8);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
+  padding: 1.15rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.alert-user-pill {
+  display: inline-block;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 0.3rem 0.9rem;
+  border-radius: var(--radius-full);
+  margin-bottom: 0.5rem;
+}
+
+.alert-user-pill.dorianne {
+  background: var(--color-dorianne-bg);
+  border: 1px solid var(--color-dorianne);
+  color: var(--color-dorianne);
+  box-shadow: 0 0 15px rgba(236, 72, 153, 0.3);
+}
+
+.alert-user-pill.christophe {
+  background: var(--color-christophe-bg);
+  border: 1px solid var(--color-christophe);
+  color: var(--color-christophe);
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
+}
+
+.alert-user-pill.both {
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid var(--color-success);
+  color: #34D399;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+}
+
+.alert-hero-box h3 {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--text-white);
+  margin: 0.35rem 0 0.65rem 0;
+  word-break: break-word;
+}
+
+.alert-datetime-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: rgba(221, 167, 39, 0.15);
+  border: 1px solid var(--dk-gold);
+  color: var(--text-white);
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--radius-full);
+}
+
+.alert-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #6EE7B7;
+  padding: 0.5rem 0.85rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-top: 0.35rem;
+}
+
+.pulse-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background-color: var(--color-success);
+  box-shadow: 0 0 10px var(--color-success);
+  animation: pulseGreen 1.5s infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulseGreen {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+.btn-outline-gold {
+  background: transparent;
+  border: 1px solid var(--dk-gold);
+  color: var(--dk-gold);
+  font-weight: 700;
+  border-radius: var(--radius-md);
+  padding: 0.65rem 1rem;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.btn-outline-gold:hover {
+  background: rgba(221, 167, 39, 0.15);
+  transform: translateY(-1px);
+}
+
+/* =============================================================
    Responsive adaptatif
    ============================================================= */
 @media (min-width: 768px) {
