@@ -481,6 +481,17 @@ function updateStats(list) {
   if (listTitle) {
     listTitle.textContent = `Rendez-vous programmés (${currentList.length})`;
   }
+
+  // Tableau des scores par utilisateur
+  const countDorianne = currentList.filter(a => a.user === "Dorianne").length;
+  const countChristophe = currentList.filter(a => a.user === "Christophe").length;
+  const countBoth = currentList.filter(a => a.user === "Tous les deux").length;
+  const elScoreDorianne = document.getElementById("score-dorianne");
+  const elScoreChristophe = document.getElementById("score-christophe");
+  const elScoreBoth = document.getElementById("score-both");
+  if (elScoreDorianne) elScoreDorianne.textContent = countDorianne;
+  if (elScoreChristophe) elScoreChristophe.textContent = countChristophe;
+  if (elScoreBoth) elScoreBoth.textContent = countBoth;
 }
 
 // =============================================================
@@ -1012,6 +1023,13 @@ async function submitForm(e) {
 
   resetForm();
   app.switchTab("planning");
+
+  // Afficher la modal d'alerte pour confirmer l'ajout / modification
+  setTimeout(() => {
+    if (typeof showAppointmentAlert === 'function') {
+      showAppointmentAlert(targetAppt, !id, false);
+    }
+  }, 400);
 
   // Synchronisation asynchrone avec Baserow (capitalisé pour Baserow)
   const baserowData = {
