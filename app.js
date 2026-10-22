@@ -451,12 +451,15 @@ function renderAppointments(list) {
   updateGuidanceSelect(list);
   // Vérifier les départs imminents
   checkImminentDepartures(list);
+  // Mettre à jour les statistiques et nombres de rendez-vous
+  updateStats(list);
 }
 
 function updateStats(list) {
+  const currentList = Array.isArray(list) ? list : (window.__appointments || loadLocalAppointments());
   const todayStr = new Date().toISOString().split("T")[0];
-  const today = list.filter(a => a.date === todayStr);
-  const upcoming = list.filter(a => a.date >= todayStr);
+  const today = currentList.filter(a => a.date === todayStr);
+  const upcoming = currentList.filter(a => a.date >= todayStr);
 
   const elToday = document.getElementById("stats-today");
   const elUpcoming = document.getElementById("stats-upcoming");
@@ -464,7 +467,20 @@ function updateStats(list) {
 
   if (elToday) elToday.textContent = today.length;
   if (elUpcoming) elUpcoming.textContent = upcoming.length;
-  if (elTotal) elTotal.textContent = list.length;
+  if (elTotal) elTotal.textContent = currentList.length;
+
+  // Mise à jour du badge Planning sur la barre de navigation
+  const planBadge = document.getElementById("planning-badge-count");
+  if (planBadge) {
+    planBadge.textContent = currentList.length;
+    planBadge.classList.toggle("hidden", currentList.length === 0);
+  }
+
+  // Titre de la liste avec le nombre de rendez-vous
+  const listTitle = document.getElementById("list-group-title");
+  if (listTitle) {
+    listTitle.textContent = `Rendez-vous programmés (${currentList.length})`;
+  }
 }
 
 // =============================================================
@@ -578,8 +594,78 @@ function checkImminentDepartures(list) {
 }
 
 // =============================================================
-// GESTIONNAIRE D'ALERTES ET NOTIFICATIONS (Dunkirk IT)
+// GESTIONNAIRE D'ALERTES ET NOTIFICATIONS MULTI-UTILISATEURS (Dunkirk IT)
 // =============================================================
+function getMySessionId() {
+  let sid = sessionStorage.getItem("dunkirk_tab_session_id");
+  if (!sid) {
+    sid = "sess_" + Date.now() + "_" + Math.random().toString(36).substr(2, 6);
+    sessionStorage.setItem("dunkirk_tab_session_id", sid);
+  }
+  return sid;
+}
+
+function getMyLocallyAddedIds() {
+  try {
+    return JSON.parse(localStorage.getItem("dunkirk_my_created_ids") || "[]");
+  } catch (e) {
+    return [];
+  }
+}
+
+function markIdAsLocallyCreated(id) {
+  try {
+    const list = getMyLocallyAddedIds();
+    const strId = String(id);
+    if (!list.includes(strId)) {
+      list.push(strId);
+      if (list.length > 100) list.shift();
+      localStorage.setItem("dunkirk_my_created_ids", JSON.stringify(list));
+    }
+  } catch (e) {}
+}
+
+function getKnownAppointmentIds() {
+  try {
+    return JSON.parse(localStorage.getItem("dunkirk_known_ids") || "[]");
+  } catch (e) {
+    return [];
+  }
+}
+
+function markIdAsKnown(id) {
+  try {
+    const known = getKnownAppointmentIds();
+    const strId = String(id);
+    if (!known.includes(strId)) {
+      known.push(strId);
+      localStorage.setItem("dunkirk_known_ids", JSON.stringify(known));
+    }
+  } catch (e) {}
+}
+
+function saveKnownAppointmentIds(ids) {
+  try {
+    const unique = Array.from(new Set(ids.map(String)));
+    localStorage.setItem("dunkirk_known_ids", JSON.stringify(unique));
+  } catch (e) {}
+}
+
+// Canal de synchronisation inter-onglets instantané
+const syncChannel = ('BroadcastChannel' in window) ? new BroadcastChannel('dunkirk_rdv_channel') : null;
+
+if (syncChannel) {
+  syncChannel.onmessage = (event) => {
+    if (event.data && event.data.type === 'NEW_APPOINTMENT_ADDED') {
+      const { appointment, senderSessionId } = event.data;
+      if (senderSessionId !== getMySessionId()) {
+        notifyNewAppointmentFromOtherUser(appointment);
+        loadAndRender();
+      }
+    }
+  };
+}
+
 export function triggerSystemNotification(title, body, icon = "icons/icon-192.png") {
   if (!("Notification" in window)) return;
   if (Notification.permission === "granted") {
@@ -610,13 +696,17 @@ function formatFrenchFullDate(dateStr, timeStr) {
   }
 }
 
-export function showAppointmentAlert(appt, isNew = true) {
+export function showAppointmentAlert(appt, isNew = true, isFromOtherUser = false) {
   const modal = document.getElementById("new-rdv-alert-modal");
   if (!modal) return;
 
   const headingEl = modal.querySelector(".alert-modal-heading");
   if (headingEl) {
-    headingEl.textContent = isNew ? "🚨 Alerte : Nouveau Rendez-vous !" : "🔔 Rendez-vous Mis à Jour !";
+    if (isFromOtherUser) {
+      headingEl.textContent = `🚨 Alerte : ${appt.user} a ajouté un rendez-vous !`;
+    } else {
+      headingEl.textContent = isNew ? "🚨 Alerte : Nouveau Rendez-vous !" : "🔔 Rendez-vous Mis à Jour !";
+    }
   }
 
   const userPill = document.getElementById("alert-modal-user");
@@ -662,7 +752,7 @@ export function showAppointmentAlert(appt, isNew = true) {
   }
   const timeLeadSub = document.getElementById("alert-modal-time-lead");
   if (timeLeadSub) {
-    timeLeadSub.textContent = `Alerte active (-${leadText})`;
+    timeLeadSub.textContent = isFromOtherUser ? "Nouveau rendez-vous en direct" : `Alerte active (-${leadText})`;
   }
 
   modal.dataset.rdvId = String(appt.id);
@@ -673,9 +763,23 @@ export function showAppointmentAlert(appt, isNew = true) {
 
   // Notification Web / Mobile sur smartphone
   triggerSystemNotification(
-    isNew ? `🚨 Nouveau rendez-vous pour ${appt.user}` : `🔔 Rendez-vous mis à jour (${appt.user})`,
-    `${appt.titre} • ${formatFrenchFullDate(appt.date, appt.heure)} (Rappel -${leadText})`
+    isFromOtherUser ? `🚨 ${appt.user} a ajouté un rendez-vous !` : `🚨 Nouveau rendez-vous pour ${appt.user}`,
+    `${appt.titre} • ${formatFrenchFullDate(appt.date, appt.heure)}`
   );
+}
+
+export function notifyNewAppointmentFromOtherUser(appt) {
+  playSound('carillon');
+  if (navigator.vibrate) {
+    try { navigator.vibrate([300, 150, 300]); } catch (e) {}
+  }
+  showToast(`🚨 Alerte : ${appt.user} a ajouté "${appt.titre}" !`, "🔔");
+  triggerSystemNotification(
+    `🚨 Nouveau rendez-vous pour ${appt.user} !`,
+    `"${appt.titre}" prévu le ${formatDateTime(appt.date, appt.heure)}`
+  );
+  showAppointmentAlert(appt, true, true);
+  launchConfetti();
 }
 
 export function closeAppointmentAlert() {
@@ -888,18 +992,23 @@ async function submitForm(e) {
 
   playSound('carillon');
   launchConfetti();
-  showToast(id ? "Rendez-vous mis à jour !" : "Nouveau rendez-vous planifié !", "🎉");
 
-  // Déclencher l'alerte complète pour l'utilisateur
+  // Message de confirmation clair lors de l'ajout
+  showToast(id ? "Rendez-vous modifié avec succès !" : "Rendez-vous ajouté avec succès !", "✅");
+
+  // Mémoriser l'ID créé par nous pour ne pas s'auto-alerter
+  markIdAsLocallyCreated(id || createdLocalId);
+  markIdAsKnown(id || createdLocalId);
+
+  // Informer instantanément les autres fenêtres / onglets
   const targetAppt = local.find(a => String(a.id) === String(id || createdLocalId)) || { ...data, id: createdLocalId };
-  showAppointmentAlert(targetAppt, !id);
-
-  // Mémoriser l'ID pour ne pas re-déclencher une double alerte au prochain sync
-  try {
-    const knownIds = JSON.parse(localStorage.getItem("dunkirk_known_ids") || "[]");
-    knownIds.push(String(targetAppt.id));
-    localStorage.setItem("dunkirk_known_ids", JSON.stringify(knownIds));
-  } catch (e) {}
+  if (syncChannel) {
+    syncChannel.postMessage({
+      type: 'NEW_APPOINTMENT_ADDED',
+      appointment: targetAppt,
+      senderSessionId: getMySessionId()
+    });
+  }
 
   resetForm();
   app.switchTab("planning");
@@ -1204,21 +1313,19 @@ async function loadAndRender() {
       if (appointments.length > 0) {
         // Détection des nouveaux rendez-vous créés par un autre utilisateur
         try {
-          const storedKnown = JSON.parse(localStorage.getItem("dunkirk_known_ids") || "[]");
-          const currentIds = appointments.map(a => String(a.id));
+          const storedKnown = getKnownAppointmentIds();
+          const myLocalIds = getMyLocallyAddedIds();
           if (storedKnown.length > 0) {
-            const brandNew = appointments.filter(a => !storedKnown.includes(String(a.id)));
-            if (brandNew.length > 0) {
-              const first = brandNew[0];
-              showToast(`Nouveau RDV reçu pour ${first.user} : ${first.titre}`, "🔔");
-              playSound('carillon');
-              triggerSystemNotification(
-                `🔔 Nouveau rendez-vous pour ${first.user}`,
-                `${first.titre} le ${first.date} à ${first.heure}`
-              );
+            const brandNewFromOthers = appointments.filter(a => 
+              !storedKnown.includes(String(a.id)) && !myLocalIds.includes(String(a.id))
+            );
+            if (brandNewFromOthers.length > 0) {
+              brandNewFromOthers.forEach(newAppt => {
+                notifyNewAppointmentFromOtherUser(newAppt);
+              });
             }
           }
-          localStorage.setItem("dunkirk_known_ids", JSON.stringify(currentIds));
+          saveKnownAppointmentIds(appointments.map(a => a.id));
         } catch (e) {
           console.warn("Erreur vérification alertes sync:", e);
         }
@@ -1609,10 +1716,25 @@ document.addEventListener("DOMContentLoaded", () => {
   // Date du formulaire par défaut
   resetForm();
 
-  // Vérification périodique des alertes chaque minute
+  // Vérification périodique des départs imminents
   setInterval(() => {
     checkImminentDepartures(window.__appointments || loadLocalAppointments());
   }, 60000);
+
+  // Polling automatique en arrière-plan toutes les 8 secondes pour détecter les rendez-vous ajoutés par les autres utilisateurs
+  setInterval(() => {
+    loadAndRender();
+  }, 8000);
+
+  // Synchronisation instantanée dès que l'utilisateur déverrouille son smartphone ou revient sur l'application
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      loadAndRender();
+    }
+  });
+  window.addEventListener("focus", () => {
+    loadAndRender();
+  });
 });
 
 // Exportation globale pour les onclick inline
@@ -1643,6 +1765,7 @@ export const app = {
   playSound,
   showAppointmentAlert,
   closeAppointmentAlert,
+  notifyNewAppointmentFromOtherUser,
   triggerSystemNotification
 };
 
