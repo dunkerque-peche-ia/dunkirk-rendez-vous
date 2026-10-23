@@ -104,3 +104,36 @@ try:
     print('Row 2 added successfully!')
 except Exception as e:
     print('Error row 2:', e)
+
+# =============================================================
+# CONFIGURATION TABLE 1273: Users Agenda Dorianne et Christophe
+# =============================================================
+users_table_id = 1273
+
+# Activer l'authentification par endpoint sur le champ mot de passe (id: 11950)
+patch_pwd_field = urllib.request.Request(f'https://baserow.fr.nocodespacelab.com/api/database/fields/11950/', data=json.dumps({
+    'allow_endpoint_authentication': True
+}).encode('utf-8'), headers={'Authorization': f'JWT {jwt_token}', 'Content-Type': 'application/json'}, method='PATCH')
+try:
+    urllib.request.urlopen(patch_pwd_field, context=ctx)
+    print('Enabled allow_endpoint_authentication on field 11950')
+except Exception as e:
+    print('Field 11950 update:', e)
+
+# Initialisation des utilisateurs et mots de passe
+users_setup = [
+    (1, 'Christophe', '👨', 'Macfly59*'),
+    (2, 'Dorianne', '👩', '1234')
+]
+for row_id, name, avatar, pwd in users_setup:
+    req_user_patch = urllib.request.Request(f'https://baserow.fr.nocodespacelab.com/api/database/rows/table/{users_table_id}/{row_id}/?user_field_names=true', data=json.dumps({
+        'Actif': True,
+        'Mot de passe': pwd,
+        'Avatar': avatar
+    }).encode('utf-8'), headers={'Authorization': 'Token lgWHdzUYXFcvB3A7sbzXWPl337c7qlEY', 'Content-Type': 'application/json'}, method='PATCH')
+    try:
+        urllib.request.urlopen(req_user_patch, context=ctx)
+        print(f'User {name} (id {row_id}) configured in Baserow')
+    except Exception as e:
+        print(f'User {name} config error:', e)
+

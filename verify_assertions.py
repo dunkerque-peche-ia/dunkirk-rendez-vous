@@ -14,6 +14,22 @@ assert 'closeAppointmentAlert' in html, 'Missing closeAppointmentAlert'
 assert 'triggerSystemNotification' in html, 'Missing triggerSystemNotification'
 assert 'alert-modal-card' in html, 'Missing alert-modal-card in styles'
 
+# Baserow Users assertions in index.html
+assert 'USERS_TABLE_ID = 1273' in html, 'Missing USERS_TABLE_ID = 1273 in index.html'
+assert 'PASSWORD_FIELD_ID = 11950' in html, 'Missing PASSWORD_FIELD_ID = 11950 in index.html'
+assert 'fetchBaserowUsers' in html, 'Missing fetchBaserowUsers in index.html'
+assert 'verifyBaserowPassword' in html, 'Missing verifyBaserowPassword in index.html'
+assert 'updateBaserowPassword' in html, 'Missing updateBaserowPassword in index.html'
+assert 'admin-baserow-status-badge' in html, 'Missing admin-baserow-status-badge in index.html'
+assert 'btn-sync-baserow-users' in html, 'Missing btn-sync-baserow-users in index.html'
+assert 'Users Agenda Dorianne et Christophe' in html, 'Missing table name in index.html'
+
+# Enterprise search assertions in index.html
+assert 'recherche-entreprises.api.gouv.fr' in html, 'Missing recherche-entreprises in index.html'
+assert '🏢 Entreprise' in html, 'Missing 🏢 Entreprise in index.html'
+assert '.addr-badge.enterprise' in html, 'Missing .addr-badge.enterprise in index.html'
+assert 'geocodeAddressFallback' in html, 'Missing geocodeAddressFallback in index.html'
+
 with open('js/app.js', 'r', encoding='utf-8') as f:
     js = f.read()
 
@@ -24,4 +40,29 @@ assert 'notifyNewAppointmentFromOtherUser' in js, 'Missing notifyNewAppointmentF
 assert 'planning-badge-count' in js, 'Missing planning badge update in app.js'
 assert 'syncChannel' in js, 'Missing syncChannel in app.js'
 
-print('All frontend logic & alert assertions PASSED in index.html and app.js!')
+# Baserow Users assertions in js/app.js
+assert 'USERS_TABLE_ID' in js, 'Missing USERS_TABLE_ID in js/app.js'
+assert 'PASSWORD_FIELD_ID' in js, 'Missing PASSWORD_FIELD_ID in js/app.js'
+assert 'fetchBaserowUsers' in js, 'Missing fetchBaserowUsers in js/app.js'
+assert 'verifyBaserowPassword' in js, 'Missing verifyBaserowPassword in js/app.js'
+assert 'updateBaserowPassword' in js, 'Missing updateBaserowPassword in js/app.js'
+assert 'btn-sync-baserow-users' in js, 'Missing btn-sync-baserow-users in js/app.js'
+
+# Enterprise search assertions in js/app.js
+assert 'recherche-entreprises.api.gouv.fr' in js, 'Missing recherche-entreprises in js/app.js'
+assert '🏢 Entreprise' in js, 'Missing 🏢 Entreprise in js/app.js'
+assert 'type: "enterprise"' in js, 'Missing type: "enterprise" in js/app.js'
+assert 'geocodeAddressFallback' in js, 'Missing geocodeAddressFallback in js/app.js'
+
+with open('js/config.js', 'r', encoding='utf-8') as f:
+    cfg = f.read()
+
+assert 'USERS_TABLE_ID = 1273' in cfg, 'Missing USERS_TABLE_ID = 1273 in config.js'
+assert 'PASSWORD_FIELD_ID = 11950' in cfg, 'Missing PASSWORD_FIELD_ID = 11950 in config.js'
+
+with open('css/styles.css', 'r', encoding='utf-8') as f:
+    css = f.read()
+
+assert '.addr-badge.enterprise' in css, 'Missing .addr-badge.enterprise in css/styles.css'
+
+print('All frontend logic, alerts, Baserow Users & Enterprise Search assertions PASSED!')
