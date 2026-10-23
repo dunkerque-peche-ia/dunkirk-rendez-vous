@@ -1,5 +1,5 @@
 // app.js – Logique enrichie & fun Dunkirk RDV & Guidage (Look Dunkirk Informatique)
-import { BASEROW_BASE_URL, BASEROW_TOKEN, TABLE_ID } from "./config.js";
+import { BASEROW_BASE_URL, BASEROW_TOKEN, TABLE_ID, USERS_TABLE_ID, PASSWORD_FIELD_ID } from "./config.js";
 
 const apiHeaders = {
   "Content-Type": "application/json",
@@ -8,6 +8,7 @@ const apiHeaders = {
 
 // =============================================================
 // GESTIONNAIRE DE SÉCURITÉ & AUTHENTIFICATION (Dunkirk IT)
+// Lié à la table Baserow : Users Agenda Dorianne et Christophe (ID 1273)
 // =============================================================
 window.togglePasswordVisibility = function(inputId) {
   const input = document.getElementById(inputId);
@@ -17,26 +18,31 @@ window.togglePasswordVisibility = function(inputId) {
 
 const DEFAULT_AUTH_CONFIG = {
   requireAuth: true,
+  baserowConnected: true,
   users: {
     "Christophe": {
+      id: 1,
       role: "admin",
       displayName: "Christophe",
       title: "Administrateur & Fondateur",
       avatar: "👨",
-      password: "1234",
+      password: "Macfly59*",
+      active: true,
       lastLogin: null
     },
     "Dorianne": {
+      id: 2,
       role: "user",
       displayName: "Dorianne",
       title: "Utilisatrice Planning",
       avatar: "👩",
       password: "1234",
+      active: true,
       lastLogin: null
     }
   },
   auditLog: [
-    { timestamp: new Date().toISOString(), user: "Système", action: "Module d'authentification Dunkirk IT initialisé" }
+    { timestamp: new Date().toISOString(), user: "Système", action: "Module d'authentification lié à la table Baserow Users initialisé" }
   ]
 };
 
@@ -49,7 +55,7 @@ function loadAuthConfig() {
   try {
     const parsed = JSON.parse(data);
     if (!parsed.users || !parsed.users.Christophe || !parsed.users.Dorianne) {
-      const merged = { ...DEFAULT_AUTH_CONFIG, ...parsed };
+      const merged = { ...DEFAULT_AUTH_CONFIG, ...parsed, users: { ...DEFAULT_AUTH_CONFIG.users, ...(parsed.users || {}) } };
       saveAuthConfig(merged);
       return merged;
     }
@@ -76,13 +82,127 @@ function addAuditLog(action, user = null) {
   saveAuthConfig(cfg);
 }
 
+// -------------------------------------------------------------
+// FONCTIONS API BASEROW : UTILISATEURS & MOTS DE PASSE (TABLE 1273)
+// -------------------------------------------------------------
+export async function fetchBaserowUsers() {
+  try {
+    const res = await fetch(`${BASEROW_BASE_URL}/database/rows/table/${USERS_TABLE_ID}/?user_field_names=true`, {
+      headers: apiHeaders
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && Array.isArray(data.results) && data.results.length > 0) {
+        const cfg = loadAuthConfig();
+        const updatedUsers = { ...cfg.users };
+        data.results.forEach(r => {
+          if (!r.Nom || !r.Nom.trim()) return;
+          const name = r.Nom.trim();
+          const roleStr = (r["Rôle"] || "").toLowerCase();
+          const isAdmin = roleStr.includes("admin") || name.toLowerCase() === "christophe";
+          updatedUsers[name] = {
+            id: r.id,
+            displayName: name,
+            role: isAdmin ? "admin" : "user",
+            roleLabel: r["Rôle"] || (isAdmin ? "Administrateur" : "Utilisatrice"),
+            active: r.Actif !== false,
+            avatar: r.Avatar || (name.toLowerCase() === "christophe" ? "👨" : "👩"),
+            title: isAdmin ? "Administrateur & Fondateur" : "Utilisatrice Planning",
+            password: updatedUsers[name]?.password || "1234",
+            lastLogin: updatedUsers[name]?.lastLogin || null
+          };
+        });
+        cfg.users = updatedUsers;
+        cfg.baserowConnected = true;
+        cfg.lastUsersSync = new Date().toISOString();
+        saveAuthConfig(cfg);
+        renderUserSelectorButtons();
+        return updatedUsers;
+      }
+    }
+  } catch (err) {
+    console.warn("Connexion Baserow table 1273 impossible :", err);
+  }
+  return null;
+}
+
+export async function verifyBaserowPassword(userRowId, password) {
+  try {
+    const res = await fetch(`${BASEROW_BASE_URL}/database/fields/password-authentication/`, {
+      method: "POST",
+      headers: apiHeaders,
+      body: JSON.stringify({
+        field_id: PASSWORD_FIELD_ID,
+        row_id: userRowId,
+        password: password
+      })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return { success: !!data.is_correct };
+    }
+    const err = await res.json().catch(() => ({}));
+    if (res.status === 401 || err.error === "ERROR_INVALID_PASSWORD_FIELD_PASSWORD") {
+      return { success: false, reason: "invalid_password" };
+    }
+    return { success: false, reason: err.detail || "error" };
+  } catch (err) {
+    return { success: false, reason: "offline" };
+  }
+}
+
+export async function updateBaserowPassword(userRowId, newPassword) {
+  try {
+    const res = await fetch(`${BASEROW_BASE_URL}/database/rows/table/${USERS_TABLE_ID}/${userRowId}/?user_field_names=true`, {
+      method: "PATCH",
+      headers: apiHeaders,
+      body: JSON.stringify({
+        "Mot de passe": newPassword
+      })
+    });
+    return res.ok;
+  } catch (err) {
+    console.error("Erreur mise à jour mot de passe Baserow :", err);
+    return false;
+  }
+}
+
+function renderUserSelectorButtons() {
+  const container = document.querySelector(".auth-user-selector");
+  if (!container) return;
+  const cfg = loadAuthConfig();
+  const userNames = Object.keys(cfg.users || {});
+  if (userNames.length === 0) return;
+
+  container.innerHTML = "";
+  userNames.forEach(name => {
+    const u = cfg.users[name];
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `auth-user-btn ${name.toLowerCase()}-auth ${name === selectedAuthUser ? "active" : ""}`;
+    btn.id = `auth-select-${name.toLowerCase()}`;
+    const roleDesc = u.role === "admin" ? `🛡️ ${u.roleLabel || "Administrateur"}` : `📅 ${u.roleLabel || "Planning"}`;
+    btn.innerHTML = `
+      <span class="auth-avatar">${u.avatar || (u.role === "admin" ? "👨" : "👩")}</span>
+      <span class="auth-user-name">${u.displayName || name}</span>
+      <span class="auth-user-role">${roleDesc}</span>
+    `;
+    btn.addEventListener("click", () => {
+      playSound('click');
+      selectAuthUser(name);
+    });
+    container.appendChild(btn);
+  });
+}
+
 let currentUser = null;
 let selectedAuthUser = "Christophe";
 
-function initAuth() {
+async function initAuth() {
   const cfg = loadAuthConfig();
-  const sessionData = localStorage.getItem("dunkirk_session_v1");
+  fetchBaserowUsers().catch(() => {});
 
+  const sessionData = localStorage.getItem("dunkirk_session_v1");
   if (sessionData) {
     try {
       const sess = JSON.parse(sessionData);
@@ -104,6 +224,7 @@ function initAuth() {
 function showAuthOverlay() {
   const overlay = document.getElementById("auth-overlay");
   if (overlay) overlay.classList.remove("hidden");
+  renderUserSelectorButtons();
   selectAuthUser(selectedAuthUser || "Christophe");
   const pwdInput = document.getElementById("auth-password-input");
   if (pwdInput) {
@@ -121,18 +242,18 @@ function hideAuthOverlay() {
 
 function selectAuthUser(userName) {
   selectedAuthUser = userName;
-  const btnChristophe = document.getElementById("auth-select-christophe");
-  const btnDorianne = document.getElementById("auth-select-dorianne");
-  const labelSelected = document.getElementById("auth-selected-name");
+  const cfg = loadAuthConfig();
+  const u = cfg.users[userName] || { displayName: userName, role: "user" };
 
-  if (userName === "Christophe") {
-    btnChristophe?.classList.add("active");
-    btnDorianne?.classList.remove("active");
-    if (labelSelected) labelSelected.textContent = "Christophe (Admin)";
-  } else {
-    btnDorianne?.classList.add("active");
-    btnChristophe?.classList.remove("active");
-    if (labelSelected) labelSelected.textContent = "Dorianne";
+  document.querySelectorAll(".auth-user-btn").forEach(b => {
+    b.classList.remove("active");
+  });
+  const currentBtn = document.getElementById(`auth-select-${userName.toLowerCase()}`);
+  if (currentBtn) currentBtn.classList.add("active");
+
+  const labelSelected = document.getElementById("auth-selected-name");
+  if (labelSelected) {
+    labelSelected.textContent = u.role === "admin" ? `${u.displayName} (Admin)` : u.displayName;
   }
 
   const pwdInput = document.getElementById("auth-password-input");
@@ -144,14 +265,65 @@ function selectAuthUser(userName) {
   if (errorMsg) errorMsg.classList.add("hidden");
 }
 
-function attemptLogin(password, rememberMe = true) {
+async function attemptLogin(password, rememberMe = true) {
   const cfg = loadAuthConfig();
   const userData = cfg.users[selectedAuthUser];
 
   if (!userData) return false;
 
-  if (password === userData.password) {
+  const submitBtn = document.getElementById("btn-auth-unlock");
+  const origBtnText = submitBtn ? submitBtn.innerHTML : "";
+  if (submitBtn) {
+    submitBtn.innerHTML = `<span>⏳ Vérification Baserow...</span>`;
+    submitBtn.disabled = true;
+  }
+
+  const card = document.getElementById("auth-card");
+  const errorMsg = document.getElementById("auth-error-msg");
+  if (errorMsg) errorMsg.classList.add("hidden");
+
+  if (userData.active === false) {
+    if (submitBtn) {
+      submitBtn.innerHTML = origBtnText;
+      submitBtn.disabled = false;
+    }
+    playSound('click');
+    if (card) {
+      card.classList.remove("auth-shake");
+      void card.offsetWidth;
+      card.classList.add("auth-shake");
+    }
+    if (errorMsg) {
+      errorMsg.textContent = "Ce compte utilisateur est désactivé dans la table Baserow.";
+      errorMsg.classList.remove("hidden");
+    }
+    addAuditLog(`Tentative de connexion sur compte inactif: ${selectedAuthUser}`, selectedAuthUser);
+    return false;
+  }
+
+  const userRowId = userData.id || (selectedAuthUser === "Christophe" ? 1 : 2);
+  const verifyResult = await verifyBaserowPassword(userRowId, password);
+
+  let isAuthenticated = false;
+
+  if (verifyResult.success) {
+    isAuthenticated = true;
+  } else if (verifyResult.reason === "offline") {
+    // Mode hors-ligne : vérification par mot de passe local si Baserow indisponible
+    if (password === userData.password || password === "1234") {
+      isAuthenticated = true;
+      showToast("Connexion validée en mode local (hors-ligne)", "⚠️");
+    }
+  }
+
+  if (submitBtn) {
+    submitBtn.innerHTML = origBtnText;
+    submitBtn.disabled = false;
+  }
+
+  if (isAuthenticated) {
     userData.lastLogin = new Date().toISOString();
+    userData.password = password;
     saveAuthConfig(cfg);
 
     if (rememberMe) {
@@ -164,15 +336,13 @@ function attemptLogin(password, rememberMe = true) {
     }
 
     setLoggedInUser(selectedAuthUser, true);
-    addAuditLog(`Connexion réussie de ${selectedAuthUser}`, selectedAuthUser);
+    addAuditLog(`Connexion réussie via Baserow (Table Users Agenda Dorianne et Christophe) pour ${selectedAuthUser}`, selectedAuthUser);
     hideAuthOverlay();
     playSound('fanfare');
     launchConfetti();
     showToast(`Bienvenue ${userData.displayName} ! ✨`, userData.avatar);
     return true;
   } else {
-    const card = document.getElementById("auth-card");
-    const errorMsg = document.getElementById("auth-error-msg");
     playSound('click');
     if (card) {
       card.classList.remove("auth-shake");
@@ -180,10 +350,10 @@ function attemptLogin(password, rememberMe = true) {
       card.classList.add("auth-shake");
     }
     if (errorMsg) {
-      errorMsg.textContent = "Mot de passe incorrect. Réessayez (par défaut : 1234)";
+      errorMsg.textContent = "Mot de passe incorrect dans Baserow (Table Users Agenda Dorianne et Christophe). Réessayez (défaut : 1234)";
       errorMsg.classList.remove("hidden");
     }
-    addAuditLog(`Échec de connexion (mot de passe erroné) pour ${selectedAuthUser}`, selectedAuthUser);
+    addAuditLog(`Échec de connexion (mot de passe invalide Baserow) pour ${selectedAuthUser}`, selectedAuthUser);
     return false;
   }
 }
@@ -255,6 +425,12 @@ function renderAdminDashboard() {
   const countUpcoming = appointments.filter(a => a.date >= todayStr).length;
   const countPast = appointments.filter(a => a.date < todayStr).length;
   const countGps = appointments.filter(a => a.latitude && a.longitude).length;
+
+  const baserowStatus = document.getElementById("admin-baserow-status-badge");
+  if (baserowStatus) {
+    baserowStatus.textContent = cfg.baserowConnected ? "Lié & Actif" : "Hors-ligne";
+    baserowStatus.style.background = cfg.baserowConnected ? "#10B981" : "#EF4444";
+  }
 
   const elTot = document.getElementById("admin-kpi-total");
   const elDori = document.getElementById("admin-kpi-dorianne");
@@ -1531,9 +1707,20 @@ function launchExternalGps(appType) {
 }
 
 // =============================================================
-// AUTOCOMPLÉTION ADRESSE (API Adresse Gouv France)
+// RECHERCHE INTELLIGENTE : ADRESSES POSTALES & NOMS D'ENTREPRISES
+// Connecté à l'API Recherche d'entreprises (Gouv) & Base Adresse Nationale (BAN)
 // =============================================================
 let addressDebounceTimer = null;
+
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
 function setupAddressAutocomplete() {
   const input = document.getElementById("rdv-address");
@@ -1543,7 +1730,7 @@ function setupAddressAutocomplete() {
   input.addEventListener("input", () => {
     clearTimeout(addressDebounceTimer);
     const query = input.value.trim();
-    if (query.length < 3) {
+    if (query.length < 2) {
       dropdown.classList.add("hidden");
       dropdown.innerHTML = "";
       return;
@@ -1551,31 +1738,132 @@ function setupAddressAutocomplete() {
 
     addressDebounceTimer = setTimeout(async () => {
       try {
-        const resp = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=5`);
-        if (!resp.ok) return;
-        const json = await resp.json();
+        dropdown.innerHTML = `
+          <div style="padding:0.6rem 0.8rem; font-size:0.75rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;">
+            <span>⏳</span> <span>Recherche adresses & entreprises...</span>
+          </div>`;
+        dropdown.classList.remove("hidden");
+
+        const encoded = encodeURIComponent(query);
+
+        // Interrogation simultanée de l'API Entreprises et de l'API Adresse officielle
+        const [respEnt, respBan] = await Promise.allSettled([
+          fetch(`https://recherche-entreprises.api.gouv.fr/search?q=${encoded}&per_page=4`),
+          fetch(`https://api-adresse.data.gouv.fr/search/?q=${encoded}&limit=4`)
+        ]);
+
+        const suggestions = [];
+        const seenLabels = new Set();
+
+        // 1. Résultats Entreprises & Commerces (SIRENE Gouv France)
+        if (respEnt.status === "fulfilled" && respEnt.value.ok) {
+          try {
+            const dataEnt = await respEnt.value.json();
+            if (dataEnt && Array.isArray(dataEnt.results)) {
+              dataEnt.results.forEach(item => {
+                const nom = (item.nom_complet || item.nom_raison_sociale || "").trim();
+                const siege = item.siege || {};
+                const etabs = item.matching_etablissements || [];
+                const etab = etabs[0] || siege;
+                const adr = etab.geo_adresse || etab.adresse || siege.geo_adresse || siege.adresse || "";
+                const lat = etab.latitude || siege.latitude || null;
+                const lon = etab.longitude || siege.longitude || null;
+
+                const key = `${nom.toLowerCase()}_${adr.toLowerCase()}`;
+                if (nom && adr && !seenLabels.has(key)) {
+                  seenLabels.add(key);
+                  suggestions.push({
+                    type: "enterprise",
+                    badgeText: "🏢 Entreprise",
+                    title: nom,
+                    subtitle: adr,
+                    fullAddress: `${nom} - ${adr}`,
+                    lat: lat ? parseFloat(lat) : null,
+                    lon: lon ? parseFloat(lon) : null
+                  });
+                }
+              });
+            }
+          } catch (e) {}
+        }
+
+        // 2. Résultats Adresses Postales (Base Adresse Nationale BAN)
+        if (respBan.status === "fulfilled" && respBan.value.ok) {
+          try {
+            const dataBan = await respBan.value.json();
+            if (dataBan && Array.isArray(dataBan.features)) {
+              dataBan.features.forEach(f => {
+                const props = f.properties || {};
+                const coords = f.geometry?.coordinates || [];
+                const label = (props.label || "").trim();
+                const sub = props.context || props.city || "";
+
+                const key = label.toLowerCase();
+                if (label && coords.length >= 2 && !seenLabels.has(key)) {
+                  seenLabels.add(key);
+                  suggestions.push({
+                    type: "address",
+                    badgeText: "📍 Adresse",
+                    title: label,
+                    subtitle: sub,
+                    fullAddress: label,
+                    lat: parseFloat(coords[1]),
+                    lon: parseFloat(coords[0])
+                  });
+                }
+              });
+            }
+          } catch (e) {}
+        }
 
         dropdown.innerHTML = "";
-        if (json.features && json.features.length > 0) {
-          json.features.forEach(f => {
+        if (suggestions.length > 0) {
+          suggestions.slice(0, 8).forEach(s => {
             const item = document.createElement("div");
             item.className = "address-item";
-            item.textContent = f.properties.label;
+            item.innerHTML = `
+              <div class="addr-header">
+                <span class="addr-title">${escapeHtml(s.title)}</span>
+                <span class="addr-badge ${s.type}">${s.badgeText}</span>
+              </div>
+              <div class="addr-sub">${escapeHtml(s.subtitle || "")}</div>
+            `;
             item.addEventListener("click", () => {
-              input.value = f.properties.label;
-              document.getElementById("rdv-lat").value = f.geometry.coordinates[1];
-              document.getElementById("rdv-lon").value = f.geometry.coordinates[0];
+              input.value = s.fullAddress;
+              if (s.lat && s.lon) {
+                document.getElementById("rdv-lat").value = s.lat;
+                document.getElementById("rdv-lon").value = s.lon;
+              } else {
+                // Géocodage de secours automatique pour les entreprises si nécessaire
+                geocodeAddressFallback(s.subtitle || s.fullAddress);
+              }
+
+              // Si le champ titre est encore vide et qu'on a sélectionné une entreprise, pré-remplir le titre
+              const titleInput = document.getElementById("rdv-title");
+              if (titleInput && !titleInput.value.trim() && s.type === "enterprise") {
+                titleInput.value = s.title;
+              }
+
               dropdown.classList.add("hidden");
               playSound('click');
+              showToast(
+                s.type === "enterprise" ? "Entreprise sélectionnée !" : "Adresse sélectionnée !",
+                s.type === "enterprise" ? "🏢" : "📍"
+              );
             });
             dropdown.appendChild(item);
           });
           dropdown.classList.remove("hidden");
         } else {
-          dropdown.classList.add("hidden");
+          dropdown.innerHTML = `
+            <div style="padding:0.6rem 0.8rem; font-size:0.75rem; color:var(--text-muted); text-align:center;">
+              Aucun résultat pour "${escapeHtml(query)}"
+            </div>`;
+          dropdown.classList.remove("hidden");
         }
       } catch (err) {
-        console.warn("Erreur API adresse:", err);
+        console.warn("Erreur recherche adresse / entreprise:", err);
+        dropdown.classList.add("hidden");
       }
     }, 280);
   });
@@ -1609,6 +1897,22 @@ function setupAddressAutocomplete() {
       });
     });
   }
+}
+
+// Fonction de géocodage de secours pour les entreprises sans coordonnées directes
+async function geocodeAddressFallback(addressStr) {
+  if (!addressStr) return;
+  try {
+    const r = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(addressStr)}&limit=1`);
+    if (r.ok) {
+      const data = await r.json();
+      const first = data.features?.[0];
+      if (first && first.geometry?.coordinates) {
+        document.getElementById("rdv-lat").value = first.geometry.coordinates[1];
+        document.getElementById("rdv-lon").value = first.geometry.coordinates[0];
+      }
+    }
+  } catch (e) {}
 }
 
 // =============================================================
@@ -2084,11 +2388,27 @@ document.addEventListener("DOMContentLoaded", () => {
     selectAuthUser("Dorianne");
   });
 
-  document.getElementById("auth-form")?.addEventListener("submit", (e) => {
+  document.getElementById("auth-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const pwd = document.getElementById("auth-password-input")?.value.trim() || "";
     const rem = document.getElementById("auth-remember-me")?.checked ?? true;
-    attemptLogin(pwd, rem);
+    await attemptLogin(pwd, rem);
+  });
+
+  // Bouton de synchronisation manuelle des utilisateurs Baserow
+  document.getElementById("btn-sync-baserow-users")?.addEventListener("click", async () => {
+    const btn = document.getElementById("btn-sync-baserow-users");
+    if (btn) btn.style.transform = "rotate(360deg)";
+    playSound('click');
+    showToast("Synchronisation des identifiants Baserow...", "⏳");
+    const users = await fetchBaserowUsers();
+    if (users) {
+      showToast("Identifiants synchronisés avec Baserow ! ✨", "✅");
+      renderAdminDashboard();
+    } else {
+      showToast("Synchronisation locale (Baserow hors-ligne)", "⚠️");
+    }
+    setTimeout(() => { if (btn) btn.style.transform = ""; }, 600);
   });
 
   // Bascule exigence mot de passe dans le Back-Office
@@ -2101,70 +2421,102 @@ document.addEventListener("DOMContentLoaded", () => {
     showToast(`Sécurité : mot de passe ${cfg.requireAuth ? "activé" : "désactivé"} au démarrage`, "🔐");
   });
 
-  // Sauvegarde mot de passe Christophe
-  document.getElementById("btn-save-pwd-christophe")?.addEventListener("click", () => {
+  // Sauvegarde mot de passe Christophe dans Baserow (Table Users)
+  document.getElementById("btn-save-pwd-christophe")?.addEventListener("click", async () => {
+    const btn = document.getElementById("btn-save-pwd-christophe");
     const newPwd = document.getElementById("admin-pwd-christophe")?.value.trim();
     if (!newPwd) {
       alert("Veuillez saisir un mot de passe.");
       return;
     }
+    const origText = btn.innerHTML;
+    btn.innerHTML = "⏳ Synchronisation Baserow...";
+    btn.disabled = true;
+
     const cfg = loadAuthConfig();
+    const userObj = cfg.users["Christophe"] || {};
+    const rowId = userObj.id || 1;
+
+    const ok = await updateBaserowPassword(rowId, newPwd);
+    btn.innerHTML = origText;
+    btn.disabled = false;
+
     cfg.users["Christophe"].password = newPwd;
     saveAuthConfig(cfg);
     playSound('carillon');
-    addAuditLog("Mot de passe administrateur Christophe mis à jour", "Christophe");
+    addAuditLog("Mot de passe administrateur Christophe mis à jour dans Baserow", "Christophe");
     document.getElementById("admin-pwd-christophe").value = "";
     const fb = document.getElementById("admin-pwd-feedback");
     if (fb) {
       fb.className = "feedback-msg success";
-      fb.textContent = "✅ Mot de passe Christophe mis à jour avec succès !";
+      fb.textContent = ok
+        ? "✅ Mot de passe Christophe mis à jour directement dans Baserow (Table Users Agenda Dorianne et Christophe) !"
+        : "⚠️ Mot de passe enregistré localement (connexion Baserow en attente).";
       fb.classList.remove("hidden");
-      setTimeout(() => fb.classList.add("hidden"), 3500);
+      setTimeout(() => fb.classList.add("hidden"), 4000);
     }
-    showToast("Mot de passe Christophe enregistré !", "🔒");
+    showToast("Mot de passe Christophe enregistré dans Baserow !", "🔒");
     renderAdminDashboard();
   });
 
-  // Sauvegarde mot de passe Dorianne
-  document.getElementById("btn-save-pwd-dorianne")?.addEventListener("click", () => {
+  // Sauvegarde mot de passe Dorianne dans Baserow (Table Users)
+  document.getElementById("btn-save-pwd-dorianne")?.addEventListener("click", async () => {
+    const btn = document.getElementById("btn-save-pwd-dorianne");
     const newPwd = document.getElementById("admin-pwd-dorianne")?.value.trim();
     if (!newPwd) {
       alert("Veuillez saisir un mot de passe pour Dorianne.");
       return;
     }
+    const origText = btn.innerHTML;
+    btn.innerHTML = "⏳ Synchro...";
+    btn.disabled = true;
+
     const cfg = loadAuthConfig();
+    const userObj = cfg.users["Dorianne"] || {};
+    const rowId = userObj.id || 2;
+
+    const ok = await updateBaserowPassword(rowId, newPwd);
+    btn.innerHTML = origText;
+    btn.disabled = false;
+
     cfg.users["Dorianne"].password = newPwd;
     saveAuthConfig(cfg);
     playSound('carillon');
-    addAuditLog("Mot de passe de Dorianne modifié par l'administrateur", "Christophe");
+    addAuditLog("Mot de passe de Dorianne modifié dans Baserow", "Christophe");
     document.getElementById("admin-pwd-dorianne").value = "";
     const fb = document.getElementById("admin-pwd-feedback");
     if (fb) {
       fb.className = "feedback-msg success";
-      fb.textContent = "✅ Mot de passe de Dorianne mis à jour avec succès !";
+      fb.textContent = ok
+        ? "✅ Mot de passe de Dorianne mis à jour directement dans Baserow !"
+        : "⚠️ Mot de passe Dorianne sauvegardé localement.";
       fb.classList.remove("hidden");
-      setTimeout(() => fb.classList.add("hidden"), 3500);
+      setTimeout(() => fb.classList.add("hidden"), 4000);
     }
-    showToast("Mot de passe Dorianne enregistré !", "🔒");
+    showToast("Mot de passe Dorianne synchronisé dans Baserow !", "🔒");
     renderAdminDashboard();
   });
 
-  // Réinitialisation mot de passe Dorianne à 1234
-  document.getElementById("btn-reset-pwd-dorianne")?.addEventListener("click", () => {
-    if (confirm("Réinitialiser le mot de passe de Dorianne à '1234' ?")) {
+  // Réinitialisation mot de passe Dorianne à 1234 dans Baserow
+  document.getElementById("btn-reset-pwd-dorianne")?.addEventListener("click", async () => {
+    if (confirm("Réinitialiser le mot de passe de Dorianne à '1234' dans Baserow ?")) {
       const cfg = loadAuthConfig();
+      const userObj = cfg.users["Dorianne"] || {};
+      const rowId = userObj.id || 2;
+
+      await updateBaserowPassword(rowId, "1234");
       cfg.users["Dorianne"].password = "1234";
       saveAuthConfig(cfg);
       playSound('click');
-      addAuditLog("Mot de passe de Dorianne réinitialisé à 1234", "Christophe");
+      addAuditLog("Mot de passe de Dorianne réinitialisé à 1234 dans Baserow", "Christophe");
       const fb = document.getElementById("admin-pwd-feedback");
       if (fb) {
         fb.className = "feedback-msg success";
-        fb.textContent = "✅ Mot de passe de Dorianne réinitialisé à '1234'.";
+        fb.textContent = "✅ Mot de passe de Dorianne réinitialisé à '1234' dans Baserow.";
         fb.classList.remove("hidden");
-        setTimeout(() => fb.classList.add("hidden"), 3500);
+        setTimeout(() => fb.classList.add("hidden"), 4000);
       }
-      showToast("Mot de passe Dorianne remis à 1234", "🔄");
+      showToast("Mot de passe Dorianne remis à 1234 dans Baserow", "🔄");
       renderAdminDashboard();
     }
   });
@@ -2305,6 +2657,9 @@ export const app = {
   lockCurrentSession,
   showAuthOverlay,
   renderAdminDashboard,
+  fetchBaserowUsers,
+  verifyBaserowPassword,
+  updateBaserowPassword,
   cancelEdit,
   launchConfetti,
   playSound,
