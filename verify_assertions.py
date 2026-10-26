@@ -40,6 +40,18 @@ assert 'notifyNewAppointmentFromOtherUser' in js, 'Missing notifyNewAppointmentF
 assert 'planning-badge-count' in js, 'Missing planning badge update in app.js'
 assert 'syncChannel' in js, 'Missing syncChannel in app.js'
 
+# Email authentication & SMS notifications assertions in index.html
+assert 'auth-email-input' in html, 'Missing auth-email-input in index.html'
+assert 'christophe.gontier@outlook.fr' in html, 'Missing Christophe email in index.html'
+assert 'dorianne.dbe@free.fr' in html, 'Missing Dorianne email in index.html'
+assert '0783131740' in html, 'Missing Christophe phone in index.html'
+assert '0651631615' in html, 'Missing Dorianne phone in index.html'
+assert 'triggerAppointmentSmsNotification' in html, 'Missing triggerAppointmentSmsNotification in index.html'
+assert 'dispatchSmsGateway' in html, 'Missing dispatchSmsGateway in index.html'
+assert 'alert-modal-btn-sms' in html, 'Missing alert-modal-btn-sms in index.html'
+assert 'btn-test-sms-christophe' in html, 'Missing btn-test-sms-christophe in index.html'
+assert 'btn-test-sms-dorianne' in html, 'Missing btn-test-sms-dorianne in index.html'
+
 # Baserow Users assertions in js/app.js
 assert 'USERS_TABLE_ID' in js, 'Missing USERS_TABLE_ID in js/app.js'
 assert 'PASSWORD_FIELD_ID' in js, 'Missing PASSWORD_FIELD_ID in js/app.js'
@@ -47,6 +59,10 @@ assert 'fetchBaserowUsers' in js, 'Missing fetchBaserowUsers in js/app.js'
 assert 'verifyBaserowPassword' in js, 'Missing verifyBaserowPassword in js/app.js'
 assert 'updateBaserowPassword' in js, 'Missing updateBaserowPassword in js/app.js'
 assert 'btn-sync-baserow-users' in js, 'Missing btn-sync-baserow-users in js/app.js'
+assert 'christophe.gontier@outlook.fr' in js, 'Missing Christophe email in js/app.js'
+assert 'dorianne.dbe@free.fr' in js, 'Missing Dorianne email in js/app.js'
+assert 'triggerAppointmentSmsNotification' in js, 'Missing triggerAppointmentSmsNotification in js/app.js'
+assert 'dispatchSmsGateway' in js, 'Missing dispatchSmsGateway in js/app.js'
 
 # Enterprise search assertions in js/app.js
 assert 'recherche-entreprises.api.gouv.fr' in js, 'Missing recherche-entreprises in js/app.js'
@@ -64,5 +80,6 @@ with open('css/styles.css', 'r', encoding='utf-8') as f:
     css = f.read()
 
 assert '.addr-badge.enterprise' in css, 'Missing .addr-badge.enterprise in css/styles.css'
+assert '.btn-sms' in css, 'Missing .btn-sms in css/styles.css'
 
-print('All frontend logic, alerts, Baserow Users & Enterprise Search assertions PASSED!')
+print('All frontend logic, alerts, Baserow Users, Email Auth & SMS Assertions PASSED!')
