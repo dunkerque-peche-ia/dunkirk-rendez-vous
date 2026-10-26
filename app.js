@@ -29,7 +29,7 @@ const DEFAULT_AUTH_CONFIG = {
       roleLabel: "Administrateur",
       title: "Administrateur & Fondateur",
       avatar: "👨",
-      phone: "0783131740",
+      phone: "0783141740",
       password: "Macfly59*",
       active: true,
       lastLogin: null
@@ -57,7 +57,7 @@ const DEFAULT_AUTH_CONFIG = {
       roleLabel: "Administrateur",
       title: "Administrateur & Fondateur",
       avatar: "👨",
-      phone: "0783131740",
+      phone: "0783141740",
       password: "Macfly59*",
       active: true,
       lastLogin: null
@@ -93,7 +93,7 @@ function loadAuthConfig() {
     if (!parsed.users) parsed.users = {};
     if (parsed.users.Christophe) {
       parsed.users.Christophe.email = parsed.users.Christophe.email || "christophe.gontier@outlook.fr";
-      parsed.users.Christophe.phone = parsed.users.Christophe.phone || "0783131740";
+      parsed.users.Christophe.phone = parsed.users.Christophe.phone || "0783141740";
       if (!parsed.users["christophe.gontier@outlook.fr"]) {
         parsed.users["christophe.gontier@outlook.fr"] = parsed.users.Christophe;
       }
@@ -159,7 +159,7 @@ export async function fetchBaserowUsers() {
             roleLabel: r["Rôle"] || (isAdmin ? "Administrateur" : "Utilisatrice"),
             active: r.Actif !== false,
             avatar: r.Avatar || (isAdmin ? "👨" : "👩"),
-            phone: phone || (isAdmin ? "0783131740" : "0651631615"),
+            phone: phone || (isAdmin ? "0783141740" : "0651631615"),
             title: isAdmin ? "Administrateur & Fondateur" : "Utilisatrice Planning",
             password: (name && updatedUsers[name]?.password) || (email && updatedUsers[email]?.password) || (isAdmin ? "Macfly59*" : "1234"),
             lastLogin: (name && updatedUsers[name]?.lastLogin) || (email && updatedUsers[email]?.lastLogin) || null
@@ -234,7 +234,7 @@ export function getRegisteredUsersInfo() {
     name: "Christophe",
     displayName: "Christophe",
     email: "christophe.gontier@outlook.fr",
-    phone: "0783131740"
+    phone: "0783141740"
   };
   const userDorianne = all.find(u => (u.displayName || "").toLowerCase() === "dorianne" || (u.email || "").includes("dorianne")) || {
     id: 2,
@@ -256,31 +256,53 @@ export function buildAppointmentSmsText(appt, senderName = null) {
 
 export async function dispatchSmsGateway(cleanPhone, rawPhone, messageText, recipient) {
   const webhookUrl = localStorage.getItem("dunkirk_sms_gateway_v1");
-  if (!webhookUrl || !webhookUrl.trim()) return;
+  const freeMobileUser = localStorage.getItem("dunkirk_freemobile_user_v1");
+  const freeMobilePass = localStorage.getItem("dunkirk_freemobile_pass_v1");
 
-  try {
-    if (webhookUrl.includes("smsapi.free-mobile.fr")) {
-      const sep = webhookUrl.includes("?") ? "&" : "?";
-      const finalUrl = `${webhookUrl}${sep}msg=${encodeURIComponent(messageText)}`;
-      await fetch(finalUrl, { mode: "no-cors" });
-    } else {
-      await fetch(webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          event: "NEW_APPOINTMENT_SMS",
-          recipientName: recipient.displayName || recipient.name,
-          recipientPhone: cleanPhone,
-          rawPhone: rawPhone,
-          message: messageText,
-          timestamp: new Date().toISOString()
-        })
-      });
+  let dispatched = false;
+
+  // 1. Passerelle Free Mobile officielle directe (100% gratuit et instantané en arrière-plan)
+  if (freeMobileUser && freeMobilePass) {
+    try {
+      const freeUrl = `https://smsapi.free-mobile.fr/sendmsg?user=${encodeURIComponent(freeMobileUser.trim())}&pass=${encodeURIComponent(freeMobilePass.trim())}&msg=${encodeURIComponent(messageText)}`;
+      await fetch(freeUrl, { mode: "no-cors" });
+      dispatched = true;
+      addAuditLog(`📱 SMS automatique transmis via Free Mobile API à ${recipient.displayName}`);
+      showToast(`📱 SMS automatique envoyé à ${recipient.displayName} !`, "✅");
+    } catch(err) {
+      console.warn("[Free Mobile SMS] Erreur envoi:", err);
     }
-    console.log(`[SMS Gateway] Envoyé avec succès à ${recipient.displayName} (${cleanPhone})`);
-  } catch (err) {
-    console.warn(`[SMS Gateway] Erreur envoi automatique :`, err);
   }
+
+  // 2. Passerelle Webhook JSON (Make, Zapier, Twilio, Brevo, n8n)
+  if (webhookUrl && webhookUrl.trim()) {
+    try {
+      const trimmed = webhookUrl.trim();
+      if (trimmed.includes("smsapi.free-mobile.fr")) {
+        const sep = trimmed.includes("?") ? "&" : "?";
+        await fetch(`${trimmed}${sep}msg=${encodeURIComponent(messageText)}`, { mode: "no-cors" });
+      } else {
+        await fetch(trimmed, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            event: "NEW_APPOINTMENT_SMS",
+            recipientName: recipient.displayName || recipient.name,
+            recipientPhone: cleanPhone,
+            rawPhone: rawPhone,
+            message: messageText,
+            timestamp: new Date().toISOString()
+          })
+        });
+      }
+      dispatched = true;
+      addAuditLog(`📱 SMS transmis automatiquement via Webhook à ${recipient.displayName}`);
+    } catch (err) {
+      console.warn(`[SMS Gateway Webhook] Erreur envoi:`, err);
+    }
+  }
+
+  return dispatched;
 }
 
 export function triggerAppointmentSmsNotification(appt, isNew = true) {
@@ -298,20 +320,34 @@ export function triggerAppointmentSmsNotification(appt, isNew = true) {
     recipients.push(userDorianne);
   }
 
-  recipients.forEach(r => {
+  recipients.forEach(async (r) => {
     const rawPhone = (r.phone || "").replace(/\s+/g, "");
     if (!rawPhone) return;
     const cleanPhone = rawPhone.startsWith("0") ? "+33" + rawPhone.slice(1) : rawPhone;
     const smsMessage = buildAppointmentSmsText(appt, currentUserName);
 
     // Journal d'audit
-    addAuditLog(`📱 Alerte SMS générée pour ${r.displayName} (${rawPhone}) : "${appt.titre}"`, currentUserName);
+    addAuditLog(`📱 Alerte SMS automatique générée pour ${r.displayName} (${rawPhone}) : "${appt.titre}"`, currentUserName);
 
-    // Notification visuelle
-    showToast(`📱 SMS d'alerte préparé pour ${r.displayName} (${rawPhone})`, "📱");
+    // 1. Tenter l'envoi via passerelle automatique (Free Mobile / Webhook)
+    const wasDispatched = await dispatchSmsGateway(cleanPhone, rawPhone, smsMessage, r);
 
-    // Envoi via passerelle automatique si configurée
-    dispatchSmsGateway(cleanPhone, rawPhone, smsMessage, r);
+    // 2. Si pas de passerelle en ligne configurée et qu'on est sur smartphone/tablette, auto-lancer le SMS
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (!wasDispatched) {
+      showToast(`📱 Alerte SMS prête pour ${r.displayName} (${rawPhone})`, "📱");
+      if (isMobile) {
+        setTimeout(() => {
+          try {
+            const smsA = document.createElement("a");
+            smsA.href = `sms:${cleanPhone}?body=${encodeURIComponent(smsMessage)}`;
+            document.body.appendChild(smsA);
+            smsA.click();
+            document.body.removeChild(smsA);
+          } catch(e) {}
+        }, 600);
+      }
+    }
   });
 }
 
@@ -412,7 +448,7 @@ function selectAuthUser(identifier) {
     const isDorianne = identifier && (identifier.toLowerCase().includes("dorianne") || identifier === "2");
     u = isDorianne
       ? { id: 2, displayName: "Dorianne", name: "Dorianne", email: "dorianne.dbe@free.fr", role: "user", avatar: "👩", phone: "0651631615" }
-      : { id: 1, displayName: "Christophe", name: "Christophe", email: "christophe.gontier@outlook.fr", role: "admin", avatar: "👨", phone: "0783131740" };
+      : { id: 1, displayName: "Christophe", name: "Christophe", email: "christophe.gontier@outlook.fr", role: "admin", avatar: "👨", phone: "0783141740" };
   }
 
   selectedAuthUser = u.email || u.displayName;
@@ -460,7 +496,7 @@ async function attemptLogin(password, rememberMe = true, emailParam = null) {
     if (typedEmail.includes("dorianne")) {
       userData = { id: 2, displayName: "Dorianne", name: "Dorianne", email: "dorianne.dbe@free.fr", role: "user", avatar: "👩", phone: "0651631615", password: "1234" };
     } else {
-      userData = { id: 1, displayName: "Christophe", name: "Christophe", email: "christophe.gontier@outlook.fr", role: "admin", avatar: "👨", phone: "0783131740", password: "Macfly59*" };
+      userData = { id: 1, displayName: "Christophe", name: "Christophe", email: "christophe.gontier@outlook.fr", role: "admin", avatar: "👨", phone: "0783141740", password: "Macfly59*" };
     }
   }
 
@@ -565,7 +601,7 @@ function setLoggedInUser(identifier, notify = false) {
   currentUser = {
     name: userData.displayName || userData.name || "Christophe",
     email: userData.email || "christophe.gontier@outlook.fr",
-    phone: userData.phone || "0783131740",
+    phone: userData.phone || "0783141740",
     ...userData
   };
   window.__currentUser = currentUser;
@@ -1436,7 +1472,7 @@ export function showAppointmentAlert(appt, isNew = true, isFromOtherUser = false
   if (alertSmsBtn) {
     const { userChristophe, userDorianne } = getRegisteredUsersInfo();
     const targetUser = (appt.user === "Dorianne") ? userDorianne : userChristophe;
-    const phone = targetUser?.phone || (appt.user === "Dorianne" ? "0651631615" : "0783131740");
+    const phone = targetUser?.phone || (appt.user === "Dorianne" ? "0651631615" : "0783141740");
     const cleanPhone = phone.replace(/\s+/g, "").startsWith("0") ? "+33" + phone.replace(/\s+/g, "").slice(1) : phone.replace(/\s+/g, "");
     const smsText = buildAppointmentSmsText(appt, window.__currentUser?.displayName);
     alertSmsBtn.href = `sms:${cleanPhone}?body=${encodeURIComponent(smsText)}`;
@@ -1719,8 +1755,10 @@ async function submitForm(e) {
   saveLocalAppointments(local);
   window.__appointments = local;
 
+  // IMPORTANT : Déclaration prioritaire de targetAppt pour éviter tout ReferenceError
+  const targetAppt = local.find(a => String(a.id) === String(id || createdLocalId)) || { ...data, id: id || createdLocalId };
+
   // Mettre à jour window.__selectedAppointment si on était en mode édition
-  // (corrige le prénom dans la modal après modification de la personne assignée)
   if (id) {
     const updatedAppt = local.find(a => String(a.id) === String(id));
     if (updatedAppt) window.__selectedAppointment = updatedAppt;
@@ -1735,17 +1773,20 @@ async function submitForm(e) {
   // Message de confirmation clair lors de l'ajout
   showToast(id ? "Rendez-vous modifié avec succès !" : "Rendez-vous ajouté avec succès !", "✅");
 
-  // Avertissement par SMS automatique pour les utilisateurs (Table Baserow 1273)
-  if (!id) {
-    triggerAppointmentSmsNotification(targetAppt, true);
-  }
-
   // Mémoriser l'ID créé par nous pour ne pas s'auto-alerter
   markIdAsLocallyCreated(id || createdLocalId);
   markIdAsKnown(id || createdLocalId);
 
+  // Avertissement par SMS automatique pour les utilisateurs (Table Baserow 1273)
+  if (!id) {
+    try {
+      triggerAppointmentSmsNotification(targetAppt, true);
+    } catch(smsErr) {
+      console.warn("Erreur déclenchement SMS automatique:", smsErr);
+    }
+  }
+
   // Informer instantanément les autres fenêtres / onglets
-  const targetAppt = local.find(a => String(a.id) === String(id || createdLocalId)) || { ...data, id: createdLocalId };
   if (syncChannel) {
     syncChannel.postMessage({
       type: 'NEW_APPOINTMENT_ADDED',
