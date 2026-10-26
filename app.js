@@ -20,29 +20,65 @@ const DEFAULT_AUTH_CONFIG = {
   requireAuth: true,
   baserowConnected: true,
   users: {
-    "Christophe": {
+    "christophe.gontier@outlook.fr": {
       id: 1,
-      role: "admin",
+      email: "christophe.gontier@outlook.fr",
+      name: "Christophe",
       displayName: "Christophe",
+      role: "admin",
+      roleLabel: "Administrateur",
       title: "Administrateur & Fondateur",
       avatar: "👨",
+      phone: "0783131740",
+      password: "Macfly59*",
+      active: true,
+      lastLogin: null
+    },
+    "dorianne.dbe@free.fr": {
+      id: 2,
+      email: "dorianne.dbe@free.fr",
+      name: "Dorianne",
+      displayName: "Dorianne",
+      role: "user",
+      roleLabel: "Planning",
+      title: "Utilisatrice Planning",
+      avatar: "👩",
+      phone: "0651631615",
+      password: "1234",
+      active: true,
+      lastLogin: null
+    },
+    "Christophe": {
+      id: 1,
+      email: "christophe.gontier@outlook.fr",
+      name: "Christophe",
+      displayName: "Christophe",
+      role: "admin",
+      roleLabel: "Administrateur",
+      title: "Administrateur & Fondateur",
+      avatar: "👨",
+      phone: "0783131740",
       password: "Macfly59*",
       active: true,
       lastLogin: null
     },
     "Dorianne": {
       id: 2,
-      role: "user",
+      email: "dorianne.dbe@free.fr",
+      name: "Dorianne",
       displayName: "Dorianne",
+      role: "user",
+      roleLabel: "Planning",
       title: "Utilisatrice Planning",
       avatar: "👩",
+      phone: "0651631615",
       password: "1234",
       active: true,
       lastLogin: null
     }
   },
   auditLog: [
-    { timestamp: new Date().toISOString(), user: "Système", action: "Module d'authentification lié à la table Baserow Users initialisé" }
+    { timestamp: new Date().toISOString(), user: "Système", action: "Module d'authentification par courriel et alertes SMS lié à la table Baserow 1273 initialisé" }
   ]
 };
 
@@ -54,10 +90,20 @@ function loadAuthConfig() {
   }
   try {
     const parsed = JSON.parse(data);
-    if (!parsed.users || !parsed.users.Christophe || !parsed.users.Dorianne) {
-      const merged = { ...DEFAULT_AUTH_CONFIG, ...parsed, users: { ...DEFAULT_AUTH_CONFIG.users, ...(parsed.users || {}) } };
-      saveAuthConfig(merged);
-      return merged;
+    if (!parsed.users) parsed.users = {};
+    if (parsed.users.Christophe) {
+      parsed.users.Christophe.email = parsed.users.Christophe.email || "christophe.gontier@outlook.fr";
+      parsed.users.Christophe.phone = parsed.users.Christophe.phone || "0783131740";
+      if (!parsed.users["christophe.gontier@outlook.fr"]) {
+        parsed.users["christophe.gontier@outlook.fr"] = parsed.users.Christophe;
+      }
+    }
+    if (parsed.users.Dorianne) {
+      parsed.users.Dorianne.email = parsed.users.Dorianne.email || "dorianne.dbe@free.fr";
+      parsed.users.Dorianne.phone = parsed.users.Dorianne.phone || "0651631615";
+      if (!parsed.users["dorianne.dbe@free.fr"]) {
+        parsed.users["dorianne.dbe@free.fr"] = parsed.users.Dorianne;
+      }
     }
     return parsed;
   } catch (e) {
@@ -96,21 +142,31 @@ export async function fetchBaserowUsers() {
         const cfg = loadAuthConfig();
         const updatedUsers = { ...cfg.users };
         data.results.forEach(r => {
-          if (!r.Nom || !r.Nom.trim()) return;
-          const name = r.Nom.trim();
+          const name = (r.Nom || "").trim();
+          const email = (r.Courriel || "").trim().toLowerCase();
+          const phone = (r["Téléphone"] || "").trim();
+          if (!name && !email) return;
+
           const roleStr = (r["Rôle"] || "").toLowerCase();
-          const isAdmin = roleStr.includes("admin") || name.toLowerCase() === "christophe";
-          updatedUsers[name] = {
+          const isAdmin = roleStr.includes("admin") || name.toLowerCase() === "christophe" || email.includes("christophe");
+
+          const userObj = {
             id: r.id,
-            displayName: name,
+            email: email || (isAdmin ? "christophe.gontier@outlook.fr" : "dorianne.dbe@free.fr"),
+            name: name || (isAdmin ? "Christophe" : "Dorianne"),
+            displayName: name || (isAdmin ? "Christophe" : "Dorianne"),
             role: isAdmin ? "admin" : "user",
             roleLabel: r["Rôle"] || (isAdmin ? "Administrateur" : "Utilisatrice"),
             active: r.Actif !== false,
-            avatar: r.Avatar || (name.toLowerCase() === "christophe" ? "👨" : "👩"),
+            avatar: r.Avatar || (isAdmin ? "👨" : "👩"),
+            phone: phone || (isAdmin ? "0783131740" : "0651631615"),
             title: isAdmin ? "Administrateur & Fondateur" : "Utilisatrice Planning",
-            password: updatedUsers[name]?.password || "1234",
-            lastLogin: updatedUsers[name]?.lastLogin || null
+            password: (name && updatedUsers[name]?.password) || (email && updatedUsers[email]?.password) || (isAdmin ? "Macfly59*" : "1234"),
+            lastLogin: (name && updatedUsers[name]?.lastLogin) || (email && updatedUsers[email]?.lastLogin) || null
           };
+
+          if (email) updatedUsers[email] = userObj;
+          if (name) updatedUsers[name] = userObj;
         });
         cfg.users = updatedUsers;
         cfg.baserowConnected = true;
@@ -167,36 +223,139 @@ export async function updateBaserowPassword(userRowId, newPassword) {
   }
 }
 
+// =============================================================
+// GESTION DES NOTIFICATIONS SMS (Table Baserow Users 1273)
+// =============================================================
+export function getRegisteredUsersInfo() {
+  const cfg = loadAuthConfig();
+  const all = Object.values(cfg.users || {});
+  const userChristophe = all.find(u => (u.displayName || "").toLowerCase() === "christophe" || (u.email || "").includes("christophe")) || {
+    id: 1,
+    name: "Christophe",
+    displayName: "Christophe",
+    email: "christophe.gontier@outlook.fr",
+    phone: "0783131740"
+  };
+  const userDorianne = all.find(u => (u.displayName || "").toLowerCase() === "dorianne" || (u.email || "").includes("dorianne")) || {
+    id: 2,
+    name: "Dorianne",
+    displayName: "Dorianne",
+    email: "dorianne.dbe@free.fr",
+    phone: "0651631615"
+  };
+  return { userChristophe, userDorianne };
+}
+
+export function buildAppointmentSmsText(appt, senderName = null) {
+  const sender = senderName || window.__currentUser?.displayName || "Agenda Dunkirk";
+  const dateStr = appt.date || "";
+  const timeStr = appt.heure ? ` à ${appt.heure}` : "";
+  const placeStr = appt.adresse ? ` (${appt.adresse})` : "";
+  return `🚨 Agenda Dunkirk: Nouveau RDV "${appt.titre || 'Rendez-vous'}" le ${dateStr}${timeStr}${placeStr}. Inscrit par ${sender}.`;
+}
+
+export async function dispatchSmsGateway(cleanPhone, rawPhone, messageText, recipient) {
+  const webhookUrl = localStorage.getItem("dunkirk_sms_gateway_v1");
+  if (!webhookUrl || !webhookUrl.trim()) return;
+
+  try {
+    if (webhookUrl.includes("smsapi.free-mobile.fr")) {
+      const sep = webhookUrl.includes("?") ? "&" : "?";
+      const finalUrl = `${webhookUrl}${sep}msg=${encodeURIComponent(messageText)}`;
+      await fetch(finalUrl, { mode: "no-cors" });
+    } else {
+      await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event: "NEW_APPOINTMENT_SMS",
+          recipientName: recipient.displayName || recipient.name,
+          recipientPhone: cleanPhone,
+          rawPhone: rawPhone,
+          message: messageText,
+          timestamp: new Date().toISOString()
+        })
+      });
+    }
+    console.log(`[SMS Gateway] Envoyé avec succès à ${recipient.displayName} (${cleanPhone})`);
+  } catch (err) {
+    console.warn(`[SMS Gateway] Erreur envoi automatique :`, err);
+  }
+}
+
+export function triggerAppointmentSmsNotification(appt, isNew = true) {
+  const { userChristophe, userDorianne } = getRegisteredUsersInfo();
+  const currentUserName = window.__currentUser?.displayName || "Agenda Dunkirk";
+  const targetUserStr = (appt.user || "").trim().toLowerCase();
+
+  const recipients = [];
+  if (targetUserStr === "christophe") {
+    recipients.push(userChristophe);
+  } else if (targetUserStr === "dorianne") {
+    recipients.push(userDorianne);
+  } else {
+    recipients.push(userChristophe);
+    recipients.push(userDorianne);
+  }
+
+  recipients.forEach(r => {
+    const rawPhone = (r.phone || "").replace(/\s+/g, "");
+    if (!rawPhone) return;
+    const cleanPhone = rawPhone.startsWith("0") ? "+33" + rawPhone.slice(1) : rawPhone;
+    const smsMessage = buildAppointmentSmsText(appt, currentUserName);
+
+    // Journal d'audit
+    addAuditLog(`📱 Alerte SMS générée pour ${r.displayName} (${rawPhone}) : "${appt.titre}"`, currentUserName);
+
+    // Notification visuelle
+    showToast(`📱 SMS d'alerte préparé pour ${r.displayName} (${rawPhone})`, "📱");
+
+    // Envoi via passerelle automatique si configurée
+    dispatchSmsGateway(cleanPhone, rawPhone, smsMessage, r);
+  });
+}
+
 function renderUserSelectorButtons() {
   const container = document.querySelector(".auth-user-selector");
   if (!container) return;
   const cfg = loadAuthConfig();
-  const userNames = Object.keys(cfg.users || {});
-  if (userNames.length === 0) return;
+  const seen = new Set();
+  const uniqueUsers = [];
+  Object.values(cfg.users || {}).forEach(u => {
+    const key = u.email || u.displayName || u.id;
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      uniqueUsers.push(u);
+    }
+  });
+  if (uniqueUsers.length === 0) return;
 
   container.innerHTML = "";
-  userNames.forEach(name => {
-    const u = cfg.users[name];
+  uniqueUsers.forEach(u => {
+    const name = u.displayName || u.name;
+    const email = u.email || "";
+    const isSelected = selectedAuthUser === email || selectedAuthUser === name;
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = `auth-user-btn ${name.toLowerCase()}-auth ${name === selectedAuthUser ? "active" : ""}`;
+    btn.className = `auth-user-btn ${name.toLowerCase()}-auth ${isSelected ? "active" : ""}`;
     btn.id = `auth-select-${name.toLowerCase()}`;
     const roleDesc = u.role === "admin" ? `🛡️ ${u.roleLabel || "Administrateur"}` : `📅 ${u.roleLabel || "Planning"}`;
     btn.innerHTML = `
       <span class="auth-avatar">${u.avatar || (u.role === "admin" ? "👨" : "👩")}</span>
-      <span class="auth-user-name">${u.displayName || name}</span>
+      <span class="auth-user-name">${name}</span>
+      <span class="auth-user-email">${email}</span>
       <span class="auth-user-role">${roleDesc}</span>
     `;
     btn.addEventListener("click", () => {
       playSound('click');
-      selectAuthUser(name);
+      selectAuthUser(email || name);
     });
     container.appendChild(btn);
   });
 }
 
 let currentUser = null;
-let selectedAuthUser = "Christophe";
+let selectedAuthUser = "christophe.gontier@outlook.fr";
 
 async function initAuth() {
   const cfg = loadAuthConfig();
@@ -206,15 +365,18 @@ async function initAuth() {
   if (sessionData) {
     try {
       const sess = JSON.parse(sessionData);
-      if (sess && sess.user && cfg.users[sess.user]) {
-        setLoggedInUser(sess.user, false);
-        return;
+      if (sess && sess.user) {
+        const foundUser = cfg.users[sess.user] || Object.values(cfg.users).find(u => u.email === sess.user || u.displayName === sess.user);
+        if (foundUser) {
+          setLoggedInUser(sess.user, false);
+          return;
+        }
       }
     } catch(e) {}
   }
 
   if (!cfg.requireAuth) {
-    setLoggedInUser("Christophe", false);
+    setLoggedInUser("christophe.gontier@outlook.fr", false);
     return;
   }
 
@@ -225,7 +387,7 @@ function showAuthOverlay() {
   const overlay = document.getElementById("auth-overlay");
   if (overlay) overlay.classList.remove("hidden");
   renderUserSelectorButtons();
-  selectAuthUser(selectedAuthUser || "Christophe");
+  selectAuthUser(selectedAuthUser || "christophe.gontier@outlook.fr");
   const pwdInput = document.getElementById("auth-password-input");
   if (pwdInput) {
     pwdInput.value = "";
@@ -240,20 +402,34 @@ function hideAuthOverlay() {
   if (overlay) overlay.classList.add("hidden");
 }
 
-function selectAuthUser(userName) {
-  selectedAuthUser = userName;
+function selectAuthUser(identifier) {
   const cfg = loadAuthConfig();
-  const u = cfg.users[userName] || { displayName: userName, role: "user" };
+  let u = cfg.users[identifier];
+  if (!u) {
+    u = Object.values(cfg.users || {}).find(item => item.email === identifier || item.displayName === identifier || item.name === identifier);
+  }
+  if (!u) {
+    const isDorianne = identifier && (identifier.toLowerCase().includes("dorianne") || identifier === "2");
+    u = isDorianne
+      ? { id: 2, displayName: "Dorianne", name: "Dorianne", email: "dorianne.dbe@free.fr", role: "user", avatar: "👩", phone: "0651631615" }
+      : { id: 1, displayName: "Christophe", name: "Christophe", email: "christophe.gontier@outlook.fr", role: "admin", avatar: "👨", phone: "0783131740" };
+  }
 
-  document.querySelectorAll(".auth-user-btn").forEach(b => {
-    b.classList.remove("active");
-  });
-  const currentBtn = document.getElementById(`auth-select-${userName.toLowerCase()}`);
+  selectedAuthUser = u.email || u.displayName;
+
+  document.querySelectorAll(".auth-user-btn").forEach(b => b.classList.remove("active"));
+  const btnId = (u.displayName || u.name || "").toLowerCase().includes("dorianne") ? "auth-select-dorianne" : "auth-select-christophe";
+  const currentBtn = document.getElementById(btnId);
   if (currentBtn) currentBtn.classList.add("active");
+
+  const emailInput = document.getElementById("auth-email-input");
+  if (emailInput) {
+    emailInput.value = u.email || "";
+  }
 
   const labelSelected = document.getElementById("auth-selected-name");
   if (labelSelected) {
-    labelSelected.textContent = u.role === "admin" ? `${u.displayName} (Admin)` : u.displayName;
+    labelSelected.textContent = `${u.displayName} (${u.email})`;
   }
 
   const pwdInput = document.getElementById("auth-password-input");
@@ -265,11 +441,28 @@ function selectAuthUser(userName) {
   if (errorMsg) errorMsg.classList.add("hidden");
 }
 
-async function attemptLogin(password, rememberMe = true) {
+async function attemptLogin(password, rememberMe = true, emailParam = null) {
   const cfg = loadAuthConfig();
-  const userData = cfg.users[selectedAuthUser];
+  const typedEmail = (emailParam || document.getElementById("auth-email-input")?.value || "").trim().toLowerCase();
 
-  if (!userData) return false;
+  let userData = null;
+  const allUsers = Object.values(cfg.users || {});
+  if (typedEmail) {
+    userData = allUsers.find(u => u.email && u.email.toLowerCase() === typedEmail);
+    if (!userData) {
+      userData = allUsers.find(u => (u.displayName && u.displayName.toLowerCase() === typedEmail) || (u.name && u.name.toLowerCase() === typedEmail));
+    }
+  }
+  if (!userData && selectedAuthUser) {
+    userData = cfg.users[selectedAuthUser] || allUsers.find(u => u.email === selectedAuthUser || u.displayName === selectedAuthUser);
+  }
+  if (!userData) {
+    if (typedEmail.includes("dorianne")) {
+      userData = { id: 2, displayName: "Dorianne", name: "Dorianne", email: "dorianne.dbe@free.fr", role: "user", avatar: "👩", phone: "0651631615", password: "1234" };
+    } else {
+      userData = { id: 1, displayName: "Christophe", name: "Christophe", email: "christophe.gontier@outlook.fr", role: "admin", avatar: "👨", phone: "0783131740", password: "Macfly59*" };
+    }
+  }
 
   const submitBtn = document.getElementById("btn-auth-unlock");
   const origBtnText = submitBtn ? submitBtn.innerHTML : "";
@@ -294,14 +487,14 @@ async function attemptLogin(password, rememberMe = true) {
       card.classList.add("auth-shake");
     }
     if (errorMsg) {
-      errorMsg.textContent = "Ce compte utilisateur est désactivé dans la table Baserow.";
+      errorMsg.textContent = "Ce compte utilisateur est désactivé dans la table Baserow 1273.";
       errorMsg.classList.remove("hidden");
     }
-    addAuditLog(`Tentative de connexion sur compte inactif: ${selectedAuthUser}`, selectedAuthUser);
+    addAuditLog(`Tentative de connexion sur compte inactif: ${userData.email || userData.displayName}`, userData.displayName);
     return false;
   }
 
-  const userRowId = userData.id || (selectedAuthUser === "Christophe" ? 1 : 2);
+  const userRowId = userData.id || (userData.displayName === "Christophe" || userData.email?.includes("christophe") ? 1 : 2);
   const verifyResult = await verifyBaserowPassword(userRowId, password);
 
   let isAuthenticated = false;
@@ -309,8 +502,8 @@ async function attemptLogin(password, rememberMe = true) {
   if (verifyResult.success) {
     isAuthenticated = true;
   } else if (verifyResult.reason === "offline") {
-    // Mode hors-ligne : vérification par mot de passe local si Baserow indisponible
-    if (password === userData.password || password === "1234") {
+    const expected = userRowId === 1 ? "Macfly59*" : "1234";
+    if (password === userData.password || password === expected) {
       isAuthenticated = true;
       showToast("Connexion validée en mode local (hors-ligne)", "⚠️");
     }
@@ -328,19 +521,20 @@ async function attemptLogin(password, rememberMe = true) {
 
     if (rememberMe) {
       localStorage.setItem("dunkirk_session_v1", JSON.stringify({
-        user: selectedAuthUser,
+        user: userData.email || userData.displayName,
+        name: userData.displayName,
         loggedInAt: Date.now()
       }));
     } else {
       localStorage.removeItem("dunkirk_session_v1");
     }
 
-    setLoggedInUser(selectedAuthUser, true);
-    addAuditLog(`Connexion réussie via Baserow (Table Users Agenda Dorianne et Christophe) pour ${selectedAuthUser}`, selectedAuthUser);
+    setLoggedInUser(userData.email || userData.displayName, true);
+    addAuditLog(`Connexion réussie via Baserow pour ${userData.email} (${userData.displayName})`, userData.displayName);
     hideAuthOverlay();
     playSound('fanfare');
     launchConfetti();
-    showToast(`Bienvenue ${userData.displayName} ! ✨`, userData.avatar);
+    showToast(`Bienvenue ${userData.displayName} (${userData.email}) ! ✨`, userData.avatar);
     return true;
   } else {
     playSound('click');
@@ -350,20 +544,28 @@ async function attemptLogin(password, rememberMe = true) {
       card.classList.add("auth-shake");
     }
     if (errorMsg) {
-      errorMsg.textContent = "Mot de passe incorrect dans Baserow (Table Users Agenda Dorianne et Christophe). Réessayez (défaut : 1234)";
+      errorMsg.textContent = `Mot de passe incorrect dans Baserow (Table Users 1273) pour ${userData.email || userData.displayName}.`;
       errorMsg.classList.remove("hidden");
     }
-    addAuditLog(`Échec de connexion (mot de passe invalide Baserow) pour ${selectedAuthUser}`, selectedAuthUser);
+    addAuditLog(`Échec de connexion pour ${userData.email || userData.displayName}`, userData.displayName);
     return false;
   }
 }
 
-function setLoggedInUser(userName, notify = false) {
+function setLoggedInUser(identifier, notify = false) {
   const cfg = loadAuthConfig();
-  const userData = cfg.users[userName] || cfg.users["Christophe"];
+  let userData = cfg.users[identifier];
+  if (!userData) {
+    userData = Object.values(cfg.users || {}).find(u => u.email === identifier || u.displayName === identifier || u.name === identifier);
+  }
+  if (!userData) {
+    userData = cfg.users["christophe.gontier@outlook.fr"] || cfg.users["Christophe"];
+  }
 
   currentUser = {
-    name: userName,
+    name: userData.displayName || userData.name || "Christophe",
+    email: userData.email || "christophe.gontier@outlook.fr",
+    phone: userData.phone || "0783131740",
     ...userData
   };
   window.__currentUser = currentUser;
@@ -381,11 +583,7 @@ function setLoggedInUser(userName, notify = false) {
 
   const adminNavBtn = document.getElementById("bottom-nav-admin");
   if (adminNavBtn) {
-    if (userData.role === "admin") {
-      adminNavBtn.style.display = "flex";
-    } else {
-      adminNavBtn.style.display = "none";
-    }
+    adminNavBtn.style.display = userData.role === "admin" ? "flex" : "none";
   }
 
   const currentActiveTab = document.querySelector(".tab-view.active")?.id;
@@ -1230,8 +1428,25 @@ export function showAppointmentAlert(appt, isNew = true, isFromOtherUser = false
     timeLeadSub.textContent = isFromOtherUser ? "Nouveau rendez-vous en direct" : `Alerte active (-${leadText})`;
   }
 
-  modal.dataset.rdvId = String(appt.id);
+    modal.dataset.rdvId = String(appt.id);
   modal.classList.remove("hidden");
+
+  // Bouton d'alerte SMS directe vers le destinataire Table 1273
+  const alertSmsBtn = document.getElementById("alert-modal-btn-sms");
+  if (alertSmsBtn) {
+    const { userChristophe, userDorianne } = getRegisteredUsersInfo();
+    const targetUser = (appt.user === "Dorianne") ? userDorianne : userChristophe;
+    const phone = targetUser?.phone || (appt.user === "Dorianne" ? "0651631615" : "0783131740");
+    const cleanPhone = phone.replace(/\s+/g, "").startsWith("0") ? "+33" + phone.replace(/\s+/g, "").slice(1) : phone.replace(/\s+/g, "");
+    const smsText = buildAppointmentSmsText(appt, window.__currentUser?.displayName);
+    alertSmsBtn.href = `sms:${cleanPhone}?body=${encodeURIComponent(smsText)}`;
+    alertSmsBtn.textContent = `📱 Envoyer SMS à ${appt.user} (${phone})`;
+    alertSmsBtn.style.display = "inline-flex";
+    alertSmsBtn.onclick = () => {
+      addAuditLog(`📱 SMS d'alerte envoyé vers ${phone} (${appt.user}) pour "${appt.titre}"`);
+      showToast(`SMS préparé vers ${phone} ! 🚀`, "📱");
+    };
+  }
 
   // Alerte sonore et célébration
   playSound('carillon');
@@ -1253,6 +1468,7 @@ export function notifyNewAppointmentFromOtherUser(appt) {
     `🚨 Nouveau rendez-vous pour ${appt.user} !`,
     `"${appt.titre}" prévu le ${formatDateTime(appt.date, appt.heure)}`
   );
+  triggerAppointmentSmsNotification(appt, true);
   showAppointmentAlert(appt, true, true);
   launchConfetti();
 }
@@ -1518,6 +1734,11 @@ async function submitForm(e) {
 
   // Message de confirmation clair lors de l'ajout
   showToast(id ? "Rendez-vous modifié avec succès !" : "Rendez-vous ajouté avec succès !", "✅");
+
+  // Avertissement par SMS automatique pour les utilisateurs (Table Baserow 1273)
+  if (!id) {
+    triggerAppointmentSmsNotification(targetAppt, true);
+  }
 
   // Mémoriser l'ID créé par nous pour ne pas s'auto-alerter
   markIdAsLocallyCreated(id || createdLocalId);
