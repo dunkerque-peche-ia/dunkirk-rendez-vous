@@ -4020,9 +4020,19 @@ input:checked + .slider:before {
           <button id="alert-modal-btn-guide" class="btn btn-primary">
             🧭 Lancer le guidage GPS
           </button>
-          <a id="alert-modal-btn-sms" class="btn btn-sms" href="#" target="_blank" style="display:none;">
-            📱 Envoyer SMS d'alerte
-          </a>
+          <div id="alert-modal-sms-wrap" style="display:flex; flex-direction:column; gap:0.4rem; width:100%; margin:0.4rem 0;">
+            <a id="alert-modal-btn-sms" class="btn btn-sms" href="#" target="_blank" style="width:100%; justify-content:center;">
+              📱 Envoyer SMS aux deux (Christophe & Dorianne)
+            </a>
+            <div style="display:flex; gap:0.4rem; width:100%;">
+              <a id="alert-modal-btn-sms-christophe" class="btn btn-sms" href="sms:+33783141740" target="_blank" style="flex:1; font-size:0.75rem; padding:0.45rem; justify-content:center;">
+                👨 SMS Christophe
+              </a>
+              <a id="alert-modal-btn-sms-dorianne" class="btn btn-sms" href="sms:+33651631615" target="_blank" style="flex:1; font-size:0.75rem; padding:0.45rem; justify-content:center;">
+                👩 SMS Dorianne
+              </a>
+            </div>
+          </div>
           <div class="secondary-actions">
             <button id="alert-modal-btn-planning" class="btn btn-secondary">
               📋 Voir dans le planning
@@ -4048,10 +4058,10 @@ input:checked + .slider:before {
         <h2 class="auth-title">DUNKIRK RDV</h2>
         <p class="auth-subtitle">Accès sécurisé à l'agenda partagé</p>
 
-        <!-- Connexion Baserow Badge -->
-        <div class="auth-baserow-badge" style="display:flex; align-items:center; justify-content:center; gap:0.4rem; background:rgba(221,167,39,0.1); border:1px solid rgba(221,167,39,0.3); border-radius:20px; padding:0.3rem 0.75rem; margin:0.4rem auto 0.9rem; width:fit-content; font-size:0.72rem; color:var(--dk-gold);">
-          <span>🗄️</span>
-          <span>Lié à Baserow : Users Agenda Dorianne et Christophe</span>
+        <!-- Indicateur de connexion sécurisée -->
+        <div class="auth-baserow-badge" style="display:flex; align-items:center; justify-content:center; gap:0.4rem; background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.3); border-radius:20px; padding:0.3rem 0.75rem; margin:0.4rem auto 0.9rem; width:fit-content; font-size:0.72rem; color:#10B981;">
+          <span>🔒</span>
+          <span>Connexion sécurisée — Agenda Dorianne &amp; Christophe</span>
           <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#10B981; margin-left:2px;"></span>
         </div>
 
@@ -4075,7 +4085,7 @@ input:checked + .slider:before {
         <form id="auth-form" onsubmit="return false;">
           <div class="form-group" style="margin-bottom:0.75rem; text-align:left;">
             <label for="auth-email-input" style="display:block; font-size:0.76rem; font-weight:700; color:var(--text-light); margin-bottom:0.35rem;">
-              ✉️ Courriel utilisateur (Table Users Baserow 1273)
+              ✉️ Adresse e-mail
             </label>
             <div class="auth-input-container">
               <input type="email" id="auth-email-input" class="form-control" value="christophe.gontier@outlook.fr" placeholder="christophe.gontier@outlook.fr ou dorianne.dbe@free.fr" autocomplete="username" required>
@@ -4099,7 +4109,7 @@ input:checked + .slider:before {
               <input type="checkbox" id="auth-remember-me" checked>
               <span>Rester connecté</span>
             </label>
-            <span style="font-size:0.7rem; color:rgba(221,167,39,0.9); font-weight:700;">Table Baserow 1273</span>
+            <span style="font-size:0.7rem; color:rgba(221,167,39,0.7); font-weight:600;">🔐 Accès sécurisé</span>
           </div>
 
           <button type="submit" id="btn-auth-unlock" class="btn btn-primary btn-block" style="padding:0.75rem;">
@@ -4376,7 +4386,8 @@ export function buildAppointmentSmsText(appt, senderName = null) {
   const dateStr = appt.date || "";
   const timeStr = appt.heure ? ` à ${appt.heure}` : "";
   const placeStr = appt.adresse ? ` (${appt.adresse})` : "";
-  return `🚨 Agenda Dunkirk: Nouveau RDV "${appt.titre || 'Rendez-vous'}" le ${dateStr}${timeStr}${placeStr}. Inscrit par ${sender}.`;
+  const forWho = appt.user ? ` [Pour: ${appt.user}]` : "";
+  return `🚨 Agenda Dunkirk: Nouveau RDV "${appt.titre || 'Rendez-vous'}"${forWho} le ${dateStr}${timeStr}${placeStr}. Inscrit par ${sender}.`;
 }
 
 export async function dispatchSmsGateway(cleanPhone, rawPhone, messageText, recipient) {
@@ -4433,17 +4444,9 @@ export async function dispatchSmsGateway(cleanPhone, rawPhone, messageText, reci
 export function triggerAppointmentSmsNotification(appt, isNew = true) {
   const { userChristophe, userDorianne } = getRegisteredUsersInfo();
   const currentUserName = window.__currentUser?.displayName || "Agenda Dunkirk";
-  const targetUserStr = (appt.user || "").trim().toLowerCase();
 
-  const recipients = [];
-  if (targetUserStr === "christophe") {
-    recipients.push(userChristophe);
-  } else if (targetUserStr === "dorianne") {
-    recipients.push(userDorianne);
-  } else {
-    recipients.push(userChristophe);
-    recipients.push(userDorianne);
-  }
+  // Dorianne et Christophe reçoivent systématiquement le SMS en même temps
+  const recipients = [userChristophe, userDorianne];
 
   recipients.forEach(async (r) => {
     const rawPhone = (r.phone || "").replace(/\s+/g, "");
@@ -5597,20 +5600,40 @@ export function showAppointmentAlert(appt, isNew = true, isFromOtherUser = false
     modal.dataset.rdvId = String(appt.id);
   modal.classList.remove("hidden");
 
-  // Bouton d'alerte SMS directe vers le destinataire Table 1273
+  // Boutons d'alerte SMS simultanés pour Christophe et Dorianne
   const alertSmsBtn = document.getElementById("alert-modal-btn-sms");
+  const btnSmsChristophe = document.getElementById("alert-modal-btn-sms-christophe");
+  const btnSmsDorianne = document.getElementById("alert-modal-btn-sms-dorianne");
+  const { userChristophe, userDorianne } = getRegisteredUsersInfo();
+  const smsText = buildAppointmentSmsText(appt, window.__currentUser?.displayName);
+
+  const phoneChristophe = "+33783141740";
+  const phoneDorianne = "+33651631615";
+
   if (alertSmsBtn) {
-    const { userChristophe, userDorianne } = getRegisteredUsersInfo();
-    const targetUser = (appt.user === "Dorianne") ? userDorianne : userChristophe;
-    const phone = targetUser?.phone || (appt.user === "Dorianne" ? "0651631615" : "0783141740");
-    const cleanPhone = phone.replace(/\s+/g, "").startsWith("0") ? "+33" + phone.replace(/\s+/g, "").slice(1) : phone.replace(/\s+/g, "");
-    const smsText = buildAppointmentSmsText(appt, window.__currentUser?.displayName);
-    alertSmsBtn.href = `sms:${cleanPhone}?body=${encodeURIComponent(smsText)}`;
-    alertSmsBtn.textContent = `📱 Envoyer SMS à ${appt.user} (${phone})`;
+    // Lien SMS groupé pour téléphones supportant la liste séparée par virgule
+    alertSmsBtn.href = `sms:${phoneChristophe},${phoneDorianne}?body=${encodeURIComponent(smsText)}`;
+    alertSmsBtn.textContent = "📱 Envoyer SMS aux deux (Christophe & Dorianne)";
     alertSmsBtn.style.display = "inline-flex";
     alertSmsBtn.onclick = () => {
-      addAuditLog(`📱 SMS d'alerte envoyé vers ${phone} (${appt.user}) pour "${appt.titre}"`);
-      showToast(`SMS préparé vers ${phone} ! 🚀`, "📱");
+      addAuditLog(`📱 SMS d'alerte groupé envoyé à Christophe et Dorianne pour "${appt.titre}"`);
+      showToast("SMS envoyé en simultané à Christophe & Dorianne ! 🚀", "📱");
+    };
+  }
+
+  if (btnSmsChristophe) {
+    btnSmsChristophe.href = `sms:${phoneChristophe}?body=${encodeURIComponent(smsText)}`;
+    btnSmsChristophe.onclick = () => {
+      addAuditLog(`📱 SMS envoyé à Christophe (${phoneChristophe}) pour "${appt.titre}"`);
+      showToast("SMS préparé pour Christophe !", "📱");
+    };
+  }
+
+  if (btnSmsDorianne) {
+    btnSmsDorianne.href = `sms:${phoneDorianne}?body=${encodeURIComponent(smsText)}`;
+    btnSmsDorianne.onclick = () => {
+      addAuditLog(`📱 SMS envoyé à Dorianne (${phoneDorianne}) pour "${appt.titre}"`);
+      showToast("SMS préparé pour Dorianne !", "📱");
     };
   }
 
