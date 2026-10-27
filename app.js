@@ -251,7 +251,8 @@ export function buildAppointmentSmsText(appt, senderName = null) {
   const dateStr = appt.date || "";
   const timeStr = appt.heure ? ` à ${appt.heure}` : "";
   const placeStr = appt.adresse ? ` (${appt.adresse})` : "";
-  return `🚨 Agenda Dunkirk: Nouveau RDV "${appt.titre || 'Rendez-vous'}" le ${dateStr}${timeStr}${placeStr}. Inscrit par ${sender}.`;
+  const forWho = appt.user ? ` [Pour: ${appt.user}]` : "";
+  return `🚨 Agenda Dunkirk: Nouveau RDV "${appt.titre || 'Rendez-vous'}"${forWho} le ${dateStr}${timeStr}${placeStr}. Inscrit par ${sender}.`;
 }
 
 export async function dispatchSmsGateway(cleanPhone, rawPhone, messageText, recipient) {
@@ -308,17 +309,9 @@ export async function dispatchSmsGateway(cleanPhone, rawPhone, messageText, reci
 export function triggerAppointmentSmsNotification(appt, isNew = true) {
   const { userChristophe, userDorianne } = getRegisteredUsersInfo();
   const currentUserName = window.__currentUser?.displayName || "Agenda Dunkirk";
-  const targetUserStr = (appt.user || "").trim().toLowerCase();
 
-  const recipients = [];
-  if (targetUserStr === "christophe") {
-    recipients.push(userChristophe);
-  } else if (targetUserStr === "dorianne") {
-    recipients.push(userDorianne);
-  } else {
-    recipients.push(userChristophe);
-    recipients.push(userDorianne);
-  }
+  // Dorianne et Christophe reçoivent systématiquement le SMS en même temps
+  const recipients = [userChristophe, userDorianne];
 
   recipients.forEach(async (r) => {
     const rawPhone = (r.phone || "").replace(/\s+/g, "");
@@ -1467,20 +1460,40 @@ export function showAppointmentAlert(appt, isNew = true, isFromOtherUser = false
     modal.dataset.rdvId = String(appt.id);
   modal.classList.remove("hidden");
 
-  // Bouton d'alerte SMS directe vers le destinataire Table 1273
+  // Boutons d'alerte SMS simultanés pour Christophe et Dorianne
   const alertSmsBtn = document.getElementById("alert-modal-btn-sms");
+  const btnSmsChristophe = document.getElementById("alert-modal-btn-sms-christophe");
+  const btnSmsDorianne = document.getElementById("alert-modal-btn-sms-dorianne");
+  const { userChristophe, userDorianne } = getRegisteredUsersInfo();
+  const smsText = buildAppointmentSmsText(appt, window.__currentUser?.displayName);
+
+  const phoneChristophe = "+33783141740";
+  const phoneDorianne = "+33651631615";
+
   if (alertSmsBtn) {
-    const { userChristophe, userDorianne } = getRegisteredUsersInfo();
-    const targetUser = (appt.user === "Dorianne") ? userDorianne : userChristophe;
-    const phone = targetUser?.phone || (appt.user === "Dorianne" ? "0651631615" : "0783141740");
-    const cleanPhone = phone.replace(/\s+/g, "").startsWith("0") ? "+33" + phone.replace(/\s+/g, "").slice(1) : phone.replace(/\s+/g, "");
-    const smsText = buildAppointmentSmsText(appt, window.__currentUser?.displayName);
-    alertSmsBtn.href = `sms:${cleanPhone}?body=${encodeURIComponent(smsText)}`;
-    alertSmsBtn.textContent = `📱 Envoyer SMS à ${appt.user} (${phone})`;
+    // Lien SMS groupé pour téléphones supportant la liste séparée par virgule
+    alertSmsBtn.href = `sms:${phoneChristophe},${phoneDorianne}?body=${encodeURIComponent(smsText)}`;
+    alertSmsBtn.textContent = "📱 Envoyer SMS aux deux (Christophe & Dorianne)";
     alertSmsBtn.style.display = "inline-flex";
     alertSmsBtn.onclick = () => {
-      addAuditLog(`📱 SMS d'alerte envoyé vers ${phone} (${appt.user}) pour "${appt.titre}"`);
-      showToast(`SMS préparé vers ${phone} ! 🚀`, "📱");
+      addAuditLog(`📱 SMS d'alerte groupé envoyé à Christophe et Dorianne pour "${appt.titre}"`);
+      showToast("SMS envoyé en simultané à Christophe & Dorianne ! 🚀", "📱");
+    };
+  }
+
+  if (btnSmsChristophe) {
+    btnSmsChristophe.href = `sms:${phoneChristophe}?body=${encodeURIComponent(smsText)}`;
+    btnSmsChristophe.onclick = () => {
+      addAuditLog(`📱 SMS envoyé à Christophe (${phoneChristophe}) pour "${appt.titre}"`);
+      showToast("SMS préparé pour Christophe !", "📱");
+    };
+  }
+
+  if (btnSmsDorianne) {
+    btnSmsDorianne.href = `sms:${phoneDorianne}?body=${encodeURIComponent(smsText)}`;
+    btnSmsDorianne.onclick = () => {
+      addAuditLog(`📱 SMS envoyé à Dorianne (${phoneDorianne}) pour "${appt.titre}"`);
+      showToast("SMS préparé pour Dorianne !", "📱");
     };
   }
 
@@ -1837,11 +1850,14 @@ async function submitForm(e) {
         const foundIdx = currentLocal.findIndex(a => a.id === createdLocalId);
         if (foundIdx >= 0) {
           currentLocal[foundIdx].id = created.id;
-        } else if (currentLocal.length > 0) {
-          currentLocal[0].id = created.id;
+          markIdAsLocallyCreated(created.id);
+          markIdAsKnown(created.id);
+          saveLocalAppointments(currentLocal);
+          window.__appointments = currentLocal;
+        } else {
+          // Le RDV local temporaire n'a pas été retrouvé (cas rare) : on l'ajoute
+          console.warn("[Dunkirk RDV] RDV local temporaire introuvable après sync Baserow, ID:", createdLocalId);
         }
-        saveLocalAppointments(currentLocal);
-        window.__appointments = currentLocal;
       }
     }
     checkCloudStatus(true);
@@ -2248,6 +2264,15 @@ async function loadAndRender() {
           saveKnownAppointmentIds(appointments.map(a => a.id));
         } catch (e) {
           console.warn("Erreur vérification alertes sync:", e);
+        }
+
+        // Fusionner avec les RDV locaux non encore synchronisés avec Baserow
+        // (IDs temporaires = grands timestamps > 100000 qui ne sont pas dans Baserow)
+        const baserowIds = new Set(appointments.map(a => String(a.id)));
+        const localData = loadLocalAppointments();
+        const localOnlyAppts = localData.filter(a => !baserowIds.has(String(a.id)));
+        if (localOnlyAppts.length > 0) {
+          appointments = [...localOnlyAppts, ...appointments];
         }
 
         saveLocalAppointments(appointments);
