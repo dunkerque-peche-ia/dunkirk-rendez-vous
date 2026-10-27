@@ -3970,6 +3970,25 @@
               </div>
             </div>
 
+            <!-- Passerelle Free Mobile SMS officielle directe (100% gratuit) -->
+            <div
+              style="background:rgba(7,22,44,0.5); border-radius:8px; padding:0.75rem; border:1px solid rgba(255,255,255,0.06); margin-bottom: 0.75rem;">
+              <label
+                style="font-size:0.75rem; font-weight:700; color:var(--text-light); display:block; margin-bottom:0.35rem;">
+                📱 Passerelle Free Mobile SMS officielle (Optionnel - https://smsapi.free-mobile.fr)
+              </label>
+              <div style="display:flex; gap:0.5rem; margin-bottom:0.4rem;">
+                <input type="text" id="admin-freemobile-user" class="form-control" placeholder="Identifiant Free Mobile" style="font-size:0.78rem; padding:0.45rem;">
+                <input type="password" id="admin-freemobile-pass" class="form-control" placeholder="Clé API SMS Free" style="font-size:0.78rem; padding:0.45rem;">
+                <button type="button" id="btn-save-freemobile" class="btn btn-outline-gold" style="font-size:0.78rem; padding:0.45rem 0.85rem; white-space:nowrap;">
+                  💾 Enregistrer
+                </button>
+              </div>
+              <div style="font-size:0.68rem; color:var(--text-muted);">
+                Permet d'envoyer automatiquement et gratuitement des notifications SMS en arrière-plan via smsapi.free-mobile.fr.
+              </div>
+            </div>
+
             <!-- Passerelle Webhook optionnelle pour envoi automatique en arrière-plan -->
             <div
               style="background:rgba(7,22,44,0.5); border-radius:8px; padding:0.75rem; border:1px solid rgba(255,255,255,0.06);">
@@ -4319,7 +4338,7 @@
           roleLabel: "Administrateur",
           title: "Administrateur & Fondateur",
           avatar: "👨",
-          phone: "0783131740",
+          phone: "0783141740",
           password: "Macfly59*",
           active: true,
           lastLogin: null
@@ -4347,7 +4366,7 @@
           roleLabel: "Administrateur",
           title: "Administrateur & Fondateur",
           avatar: "👨",
-          phone: "0783131740",
+          phone: "0783141740",
           password: "Macfly59*",
           active: true,
           lastLogin: null
@@ -4383,7 +4402,7 @@
         if (!parsed.users) parsed.users = {};
         if (parsed.users.Christophe) {
           parsed.users.Christophe.email = parsed.users.Christophe.email || "christophe.gontier@outlook.fr";
-          parsed.users.Christophe.phone = parsed.users.Christophe.phone || "0783131740";
+          parsed.users.Christophe.phone = parsed.users.Christophe.phone || "0783141740";
           if (!parsed.users["christophe.gontier@outlook.fr"]) {
             parsed.users["christophe.gontier@outlook.fr"] = parsed.users.Christophe;
           }
@@ -4449,7 +4468,7 @@
                 roleLabel: r["Rôle"] || (isAdmin ? "Administrateur" : "Utilisatrice"),
                 active: r.Actif !== false,
                 avatar: r.Avatar || (isAdmin ? "👨" : "👩"),
-                phone: phone || (isAdmin ? "0783131740" : "0651631615"),
+                phone: phone || (isAdmin ? "0783141740" : "0651631615"),
                 title: isAdmin ? "Administrateur & Fondateur" : "Utilisatrice Planning",
                 password: (name && updatedUsers[name]?.password) || (email && updatedUsers[email]?.password) || (isAdmin ? "Macfly59*" : "1234"),
                 lastLogin: (name && updatedUsers[name]?.lastLogin) || (email && updatedUsers[email]?.lastLogin) || null
@@ -4524,7 +4543,7 @@
         name: "Christophe",
         displayName: "Christophe",
         email: "christophe.gontier@outlook.fr",
-        phone: "0783131740"
+        phone: "0783141740"
       };
       const userDorianne = all.find(u => (u.displayName || "").toLowerCase() === "dorianne" || (u.email || "").includes("dorianne")) || {
         id: 2,
@@ -4702,7 +4721,7 @@
         const isDorianne = identifier && (identifier.toLowerCase().includes("dorianne") || identifier === "2");
         u = isDorianne
           ? { id: 2, displayName: "Dorianne", name: "Dorianne", email: "dorianne.dbe@free.fr", role: "user", avatar: "👩", phone: "0651631615" }
-          : { id: 1, displayName: "Christophe", name: "Christophe", email: "christophe.gontier@outlook.fr", role: "admin", avatar: "👨", phone: "0783131740" };
+          : { id: 1, displayName: "Christophe", name: "Christophe", email: "christophe.gontier@outlook.fr", role: "admin", avatar: "👨", phone: "0783141740" };
       }
 
       selectedAuthUser = u.email || u.displayName;
@@ -4750,7 +4769,7 @@
         if (typedEmail.includes("dorianne")) {
           userData = { id: 2, displayName: "Dorianne", name: "Dorianne", email: "dorianne.dbe@free.fr", role: "user", avatar: "👩", phone: "0651631615", password: "1234" };
         } else {
-          userData = { id: 1, displayName: "Christophe", name: "Christophe", email: "christophe.gontier@outlook.fr", role: "admin", avatar: "👨", phone: "0783131740", password: "Macfly59*" };
+          userData = { id: 1, displayName: "Christophe", name: "Christophe", email: "christophe.gontier@outlook.fr", role: "admin", avatar: "👨", phone: "0783141740", password: "Macfly59*" };
         }
       }
 
@@ -4855,7 +4874,7 @@
       currentUser = {
         name: userData.displayName || userData.name || "Christophe",
         email: userData.email || "christophe.gontier@outlook.fr",
-        phone: userData.phone || "0783131740",
+        phone: userData.phone || "0783141740",
         ...userData
       };
       window.__currentUser = currentUser;
@@ -5731,7 +5750,7 @@
       if (alertSmsBtn) {
         const { userChristophe, userDorianne } = getRegisteredUsersInfo();
         const targetUser = (appt.user === "Dorianne") ? userDorianne : userChristophe;
-        const phone = targetUser?.phone || (appt.user === "Dorianne" ? "0651631615" : "0783131740");
+        const phone = targetUser?.phone || (appt.user === "Dorianne" ? "0651631615" : "0783141740");
         const cleanPhone = phone.replace(/\s+/g, "").startsWith("0") ? "+33" + phone.replace(/\s+/g, "").slice(1) : phone.replace(/\s+/g, "");
         const smsText = buildAppointmentSmsText(appt, window.__currentUser?.displayName);
         alertSmsBtn.href = `sms:${cleanPhone}?body=${encodeURIComponent(smsText)}`;
@@ -5971,8 +5990,18 @@
     }
 
     async function submitForm(e) {
-      e.preventDefault();
-      const id = document.getElementById("edit-rdv-id").value.trim();
+      if (e) {
+        if (typeof e.preventDefault === "function") e.preventDefault();
+        if (typeof e.stopPropagation === "function") e.stopPropagation();
+      }
+
+      const form = document.getElementById("appointment-form");
+      if (form && typeof form.checkValidity === "function" && !form.checkValidity()) {
+        if (typeof form.reportValidity === "function") form.reportValidity();
+        return;
+      }
+
+      const id = (document.getElementById("edit-rdv-id")?.value || "").trim();
 
       // Récupération fiable de l'utilisateur sélectionné
       let selectedUser = "Dorianne";
@@ -5981,19 +6010,30 @@
         selectedUser = checkedRadio.value;
       }
 
+      const titre = (document.getElementById("rdv-title")?.value || "").trim();
+      if (!titre) {
+        showToast("Veuillez saisir un motif pour le rendez-vous ✍️", "⚠️");
+        document.getElementById("rdv-title")?.focus();
+        return;
+      }
+
+      const dateVal = document.getElementById("rdv-date")?.value || new Date().toISOString().split("T")[0];
+      const heureVal = document.getElementById("rdv-time")?.value || "12:00";
+      const adresseVal = (document.getElementById("rdv-address")?.value || "").trim();
+
       const data = {
         user: selectedUser,
         categorie: document.querySelector("input[name='rdv-style']:checked")?.value || "Co-transportage",
-        titre: document.getElementById("rdv-title").value.trim(),
-        date: document.getElementById("rdv-date").value || new Date().toISOString().split("T")[0],
-        heure: document.getElementById("rdv-time").value || "12:00",
-        adresse: document.getElementById("rdv-address").value.trim(),
-        latitude: parseFloat(document.getElementById("rdv-lat").value) || 51.0343,
-        longitude: parseFloat(document.getElementById("rdv-lon").value) || 2.3768,
-        contact: document.getElementById("rdv-contact-name").value.trim(),
-        telephone: document.getElementById("rdv-contact-phone").value.trim(),
-        notes: document.getElementById("rdv-notes").value.trim(),
-        alerte_minutes: parseInt(document.getElementById("rdv-alert-lead").value, 10) || 30,
+        titre: titre,
+        date: dateVal,
+        heure: heureVal,
+        adresse: adresseVal || "Dunkerque (59140)",
+        latitude: parseFloat(document.getElementById("rdv-lat")?.value) || 51.0343,
+        longitude: parseFloat(document.getElementById("rdv-lon")?.value) || 2.3768,
+        contact: (document.getElementById("rdv-contact-name")?.value || "").trim(),
+        telephone: (document.getElementById("rdv-contact-phone")?.value || "").trim(),
+        notes: (document.getElementById("rdv-notes")?.value || "").trim(),
+        alerte_minutes: parseInt(document.getElementById("rdv-alert-lead")?.value, 10) || 30,
       };
 
       let local = loadLocalAppointments();
@@ -6014,8 +6054,10 @@
       saveLocalAppointments(local);
       window.__appointments = local;
 
+      // IMPORTANT : Déclaration prioritaire de targetAppt AVANT toute utilisation
+      const targetAppt = local.find(a => String(a.id) === String(id || createdLocalId)) || { ...data, id: id || createdLocalId };
+
       // Mettre à jour window.__selectedAppointment si on était en mode édition
-      // (corrige le prénom dans la modal après modification de la personne assignée)
       if (id) {
         const updatedAppt = local.find(a => String(a.id) === String(id));
         if (updatedAppt) window.__selectedAppointment = updatedAppt;
@@ -6030,17 +6072,20 @@
       // Message de confirmation clair lors de l'ajout
       showToast(id ? "Rendez-vous modifié avec succès !" : "Rendez-vous ajouté avec succès !", "✅");
 
-      // Avertissement par SMS automatique pour les utilisateurs (Table Baserow 1273)
-      if (!id) {
-        triggerAppointmentSmsNotification(targetAppt, true);
-      }
-
       // Mémoriser l'ID créé par nous pour ne pas s'auto-alerter
       markIdAsLocallyCreated(id || createdLocalId);
       markIdAsKnown(id || createdLocalId);
 
+      // Avertissement par SMS automatique pour les utilisateurs (Table Baserow 1273)
+      if (!id) {
+        try {
+          triggerAppointmentSmsNotification(targetAppt, true);
+        } catch(smsErr) {
+          console.warn("Erreur déclenchement SMS automatique:", smsErr);
+        }
+      }
+
       // Informer instantanément les autres fenêtres / onglets
-      const targetAppt = local.find(a => String(a.id) === String(id || createdLocalId)) || { ...data, id: createdLocalId };
       if (syncChannel) {
         syncChannel.postMessage({
           type: 'NEW_APPOINTMENT_ADDED',
@@ -6093,11 +6138,18 @@
             const foundIdx = currentLocal.findIndex(a => a.id === createdLocalId);
             if (foundIdx >= 0) {
               currentLocal[foundIdx].id = created.id;
-            } else if (currentLocal.length > 0) {
-              currentLocal[0].id = created.id;
+            } else {
+              // Si non présent dans le local (cas de concurrence), l'insérer
+              if (!currentLocal.some(a => String(a.id) === String(created.id))) {
+                currentLocal.unshift({ ...data, id: created.id });
+              }
             }
+            markIdAsLocallyCreated(created.id);
+            markIdAsKnown(created.id);
             saveLocalAppointments(currentLocal);
             window.__appointments = currentLocal;
+            renderAppointments(currentLocal);
+            updateStats(currentLocal);
           }
         }
         checkCloudStatus(true);
@@ -6464,9 +6516,52 @@
       }
     }
 
+    async function syncPendingLocalAppointments() {
+      try {
+        const local = loadLocalAppointments();
+        const pending = local.filter(a => isNaN(Number(a.id)) || Number(a.id) > 100000);
+        for (const appt of pending) {
+          const baserowData = {
+            Titre: appt.titre,
+            Utilisateur: appt.user,
+            Categorie: appt.categorie,
+            Date: appt.date,
+            Heure: appt.heure,
+            Adresse: appt.adresse,
+            Latitude: appt.latitude,
+            Longitude: appt.longitude,
+            Contact: appt.contact,
+            Telephone: appt.telephone,
+            AlerteMinutes: appt.alerte_minutes,
+            Notes: appt.notes
+          };
+          const created = await apiFetch(`/database/rows/table/${TABLE_ID}/?user_field_names=true`, {
+            method: "POST",
+            body: JSON.stringify(baserowData),
+          });
+          if (created && created.id) {
+            let current = loadLocalAppointments();
+            const idx = current.findIndex(a => a.id === appt.id);
+            if (idx >= 0) {
+              current[idx].id = created.id;
+            }
+            markIdAsLocallyCreated(created.id);
+            markIdAsKnown(created.id);
+            saveLocalAppointments(current);
+            window.__appointments = current;
+          }
+        }
+      } catch (e) {
+        // Différé si hors ligne
+      }
+    }
+
     async function loadAndRender() {
       let appointments = [];
       try {
+        // Si des RDV locaux étaient restés non synchronisés, tenter de les envoyer
+        await syncPendingLocalAppointments();
+
         const resp = await apiFetch(`/database/rows/table/${TABLE_ID}/?page_size=200&user_field_names=true`);
         if (resp.results && resp.results.length > 0) {
           // Filtrer les lignes vides (gabarits sans titre)
@@ -6486,6 +6581,16 @@
             notes: r.Notes || r.notes || "",
             alerte_minutes: r.AlerteMinutes || r.alerte_minutes || 30,
           }));
+
+          // CRITICAL: Conserver et fusionner les RDV locaux non encore synchronisés avec Baserow
+          // (IDs temporaires = grands timestamps > 100000 qui ne sont pas dans Baserow)
+          const baserowIds = new Set(appointments.map(a => String(a.id)));
+          const localData = loadLocalAppointments();
+          const localOnlyAppts = localData.filter(a => !baserowIds.has(String(a.id)));
+          if (localOnlyAppts.length > 0) {
+            appointments = [...localOnlyAppts, ...appointments];
+          }
+
           if (appointments.length > 0) {
             // Détection des nouveaux rendez-vous créés par un autre utilisateur
             try {
@@ -6525,9 +6630,6 @@
       updateStats(appointments);
     }
 
-    // =============================================================
-    // RENDU DYNAMIQUE DES STYLES & FILTRES
-    // =============================================================
     function renderDynamicStyles() {
       const styles = loadCustomStyles();
 
@@ -6649,6 +6751,13 @@
       // 4. Formulaire RDV
       const form = document.getElementById("appointment-form");
       if (form) form.addEventListener("submit", submitForm);
+
+      const saveRdvBtn = document.getElementById("btn-save-rdv");
+      if (saveRdvBtn) {
+        saveRdvBtn.addEventListener("click", (e) => {
+          submitForm(e);
+        });
+      }
 
       const cancelBtn = document.getElementById("btn-cancel-edit");
       if (cancelBtn) cancelBtn.addEventListener("click", resetForm);
@@ -6941,7 +7050,25 @@
       if (smsWebhookInput && savedSmsWebhook) {
         smsWebhookInput.value = savedSmsWebhook;
       }
-      document.getElementById("btn-save-sms-webhook")?.addEventListener("click", () => {
+      // Free Mobile SMS gateway listeners
+      const savedFreeUser = localStorage.getItem("dunkirk_freemobile_user_v1") || "";
+      const savedFreePass = localStorage.getItem("dunkirk_freemobile_pass_v1") || "";
+      const freeUserEl = document.getElementById("admin-freemobile-user");
+      const freePassEl = document.getElementById("admin-freemobile-pass");
+      if (freeUserEl && savedFreeUser) freeUserEl.value = savedFreeUser;
+      if (freePassEl && savedFreePass) freePassEl.value = savedFreePass;
+
+      document.getElementById("btn-save-freemobile")?.addEventListener("click", () => {
+        const userVal = document.getElementById("admin-freemobile-user")?.value.trim() || "";
+        const passVal = document.getElementById("admin-freemobile-pass")?.value.trim() || "";
+        localStorage.setItem("dunkirk_freemobile_user_v1", userVal);
+        localStorage.setItem("dunkirk_freemobile_pass_v1", passVal);
+        playSound('click');
+        showToast("Identifiants Free Mobile SMS sauvegardés ! 📱", "💾");
+        addAuditLog("Passerelle Free Mobile SMS mise à jour");
+      });
+
+      document.getElementById("btn-save-sms-webhook")?.addEventListener("click" , () => {
         const val = document.getElementById("admin-sms-webhook-input")?.value.trim() || "";
         localStorage.setItem("dunkirk_sms_gateway_v1", val);
         playSound('click');
@@ -6951,8 +7078,8 @@
 
       // Boutons de test SMS direct Admin
       document.getElementById("btn-test-sms-christophe")?.addEventListener("click", () => {
-        addAuditLog("Test SMS déclenché pour Christophe (0783131740)");
-        showToast("SMS de test préparé pour Christophe (07 83 13 17 40) !", "📱");
+        addAuditLog("Test SMS déclenché pour Christophe (0783141740)");
+        showToast("SMS de test préparé pour Christophe (07 83 14 17 40) !", "📱");
       });
       document.getElementById("btn-test-sms-dorianne")?.addEventListener("click", () => {
         addAuditLog("Test SMS déclenché pour Dorianne (0651631615)");
@@ -7230,7 +7357,8 @@
       showAppointmentAlert,
       closeAppointmentAlert,
       notifyNewAppointmentFromOtherUser,
-      triggerSystemNotification
+      triggerSystemNotification,
+      submitForm
     };
 
     window.app = app;
