@@ -325,21 +325,9 @@ export function triggerAppointmentSmsNotification(appt, isNew = true) {
     // 1. Tenter l'envoi via passerelle automatique (Free Mobile / Webhook)
     const wasDispatched = await dispatchSmsGateway(cleanPhone, rawPhone, smsMessage, r);
 
-    // 2. Si pas de passerelle en ligne configurée et qu'on est sur smartphone/tablette, auto-lancer le SMS
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    // 2. Si pas de passerelle en ligne configurée, notification prête (les boutons de la modal permettent l'envoi direct)
     if (!wasDispatched) {
       showToast(`📱 Alerte SMS prête pour ${r.displayName} (${rawPhone})`, "📱");
-      if (isMobile) {
-        setTimeout(() => {
-          try {
-            const smsA = document.createElement("a");
-            smsA.href = `sms:${cleanPhone}?body=${encodeURIComponent(smsMessage)}`;
-            document.body.appendChild(smsA);
-            smsA.click();
-            document.body.removeChild(smsA);
-          } catch(e) {}
-        }, 600);
-      }
     }
   });
 }
@@ -1201,6 +1189,10 @@ function checkImminentDepartures(list) {
   const todayStr = now.toISOString().split("T")[0];
   const todayAppts = list.filter(a => a.date === todayStr);
 
+  let urgentCount = 0;
+  let minDiff = Infinity;
+  let mostUrgent = null;
+
   if (todayAppts.length === 0) {
     const upcoming = list
       .filter(a => a.date >= todayStr)
@@ -1233,6 +1225,7 @@ function checkImminentDepartures(list) {
       `;
     }
   } else {
+    feed.innerHTML = "";
     todayAppts.forEach(a => {
       if (!a.heure) return;
       const [h, m] = a.heure.split(":").map(Number);
@@ -1725,8 +1718,18 @@ function resetForm() {
 }
 
 async function submitForm(e) {
-  e.preventDefault();
-  const id = document.getElementById("edit-rdv-id").value.trim();
+  if (e) {
+    if (typeof e.preventDefault === "function") e.preventDefault();
+    if (typeof e.stopPropagation === "function") e.stopPropagation();
+  }
+
+  const form = document.getElementById("appointment-form");
+  if (form && typeof form.checkValidity === "function" && !form.checkValidity()) {
+    if (typeof form.reportValidity === "function") form.reportValidity();
+    return;
+  }
+
+  const id = (document.getElementById("edit-rdv-id")?.value || "").trim();
 
   // Récupération fiable de l'utilisateur sélectionné
   let selectedUser = "Dorianne";
@@ -1735,19 +1738,30 @@ async function submitForm(e) {
     selectedUser = checkedRadio.value;
   }
 
+  const titre = (document.getElementById("rdv-title")?.value || "").trim();
+  if (!titre) {
+    showToast("Veuillez saisir un motif pour le rendez-vous ✍️", "⚠️");
+    document.getElementById("rdv-title")?.focus();
+    return;
+  }
+
+  const dateVal = document.getElementById("rdv-date")?.value || new Date().toISOString().split("T")[0];
+  const heureVal = document.getElementById("rdv-time")?.value || "12:00";
+  const adresseVal = (document.getElementById("rdv-address")?.value || "").trim();
+
   const data = {
     user: selectedUser,
     categorie: document.querySelector("input[name='rdv-style']:checked")?.value || "Co-transportage",
-    titre: document.getElementById("rdv-title").value.trim(),
-    date: document.getElementById("rdv-date").value || new Date().toISOString().split("T")[0],
-    heure: document.getElementById("rdv-time").value || "12:00",
-    adresse: document.getElementById("rdv-address").value.trim(),
-    latitude: parseFloat(document.getElementById("rdv-lat").value) || 51.0343,
-    longitude: parseFloat(document.getElementById("rdv-lon").value) || 2.3768,
-    contact: document.getElementById("rdv-contact-name").value.trim(),
-    telephone: document.getElementById("rdv-contact-phone").value.trim(),
-    notes: document.getElementById("rdv-notes").value.trim(),
-    alerte_minutes: parseInt(document.getElementById("rdv-alert-lead").value, 10) || 30,
+    titre: titre,
+    date: dateVal,
+    heure: heureVal,
+    adresse: adresseVal || "Dunkerque (59140)",
+    latitude: parseFloat(document.getElementById("rdv-lat")?.value) || 51.0343,
+    longitude: parseFloat(document.getElementById("rdv-lon")?.value) || 2.3768,
+    contact: (document.getElementById("rdv-contact-name")?.value || "").trim(),
+    telephone: (document.getElementById("rdv-contact-phone")?.value || "").trim(),
+    notes: (document.getElementById("rdv-notes")?.value || "").trim(),
+    alerte_minutes: parseInt(document.getElementById("rdv-alert-lead")?.value, 10) || 30,
   };
 
   let local = loadLocalAppointments();
@@ -1813,8 +1827,10 @@ async function submitForm(e) {
 
   // Afficher la modal d'alerte pour confirmer l'ajout / modification
   setTimeout(() => {
-    if (typeof showAppointmentAlert === 'function') {
+    try {
       showAppointmentAlert(targetAppt, !id, false);
+    } catch(err) {
+      console.warn("Erreur affichage modal alerte:", err);
     }
   }, 400);
 
@@ -1850,14 +1866,18 @@ async function submitForm(e) {
         const foundIdx = currentLocal.findIndex(a => a.id === createdLocalId);
         if (foundIdx >= 0) {
           currentLocal[foundIdx].id = created.id;
-          markIdAsLocallyCreated(created.id);
-          markIdAsKnown(created.id);
-          saveLocalAppointments(currentLocal);
-          window.__appointments = currentLocal;
         } else {
-          // Le RDV local temporaire n'a pas été retrouvé (cas rare) : on l'ajoute
-          console.warn("[Dunkirk RDV] RDV local temporaire introuvable après sync Baserow, ID:", createdLocalId);
+          // Si non présent dans le local (cas de concurrence), l'insérer
+          if (!currentLocal.some(a => String(a.id) === String(created.id))) {
+            currentLocal.unshift({ ...data, id: created.id });
+          }
         }
+        markIdAsLocallyCreated(created.id);
+        markIdAsKnown(created.id);
+        saveLocalAppointments(currentLocal);
+        window.__appointments = currentLocal;
+        renderAppointments(currentLocal);
+        updateStats(currentLocal);
       }
     }
     checkCloudStatus(true);
@@ -1944,7 +1964,7 @@ function showGuidance(appt) {
     className: 'custom-gold-marker',
     html: `
       <div style="background:#07162C; border:2px solid #DDA727; border-radius:50%; width:34px; height:34px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 15px rgba(221,167,39,0.7); font-size:16px;">
-        ${appt.user === "Dorianne" ? "👩" : "👨"}
+        ${appt.user === "Dorianne" ? "👩" : (appt.user === "Christophe" ? "👨" : "👫")}
       </div>
     `,
     iconSize: [34, 34],
@@ -2224,9 +2244,52 @@ function checkCloudStatus(isOnline) {
   }
 }
 
+async function syncPendingLocalAppointments() {
+  try {
+    const local = loadLocalAppointments();
+    const pending = local.filter(a => isNaN(Number(a.id)) || Number(a.id) > 100000);
+    for (const appt of pending) {
+      const baserowData = {
+        Titre: appt.titre,
+        Utilisateur: appt.user,
+        Categorie: appt.categorie,
+        Date: appt.date,
+        Heure: appt.heure,
+        Adresse: appt.adresse,
+        Latitude: appt.latitude,
+        Longitude: appt.longitude,
+        Contact: appt.contact,
+        Telephone: appt.telephone,
+        AlerteMinutes: appt.alerte_minutes,
+        Notes: appt.notes
+      };
+      const created = await apiFetch(`/database/rows/table/${TABLE_ID}/?user_field_names=true`, {
+        method: "POST",
+        body: JSON.stringify(baserowData),
+      });
+      if (created && created.id) {
+        let current = loadLocalAppointments();
+        const idx = current.findIndex(a => a.id === appt.id);
+        if (idx >= 0) {
+          current[idx].id = created.id;
+        }
+        markIdAsLocallyCreated(created.id);
+        markIdAsKnown(created.id);
+        saveLocalAppointments(current);
+        window.__appointments = current;
+      }
+    }
+  } catch (e) {
+    // Différé si hors ligne
+  }
+}
+
 async function loadAndRender() {
   let appointments = [];
   try {
+    // Si des RDV sont restés en attente locale, tenter de les synchroniser
+    await syncPendingLocalAppointments();
+
     const resp = await apiFetch(`/database/rows/table/${TABLE_ID}/?page_size=200&user_field_names=true`);
     if (resp.results && resp.results.length > 0) {
       // Filtrer les lignes vides (gabarits sans titre)
@@ -2246,6 +2309,16 @@ async function loadAndRender() {
         notes: r.Notes || r.notes || "",
         alerte_minutes: r.AlerteMinutes || r.alerte_minutes || 30,
       }));
+
+      // CRITICAL: Fusionner avec les RDV locaux non encore synchronisés avec Baserow
+      // (IDs temporaires = grands timestamps > 100000 qui ne sont pas dans Baserow)
+      const baserowIds = new Set(appointments.map(a => String(a.id)));
+      const localData = loadLocalAppointments();
+      const localOnlyAppts = localData.filter(a => !baserowIds.has(String(a.id)));
+      if (localOnlyAppts.length > 0) {
+        appointments = [...localOnlyAppts, ...appointments];
+      }
+
       if (appointments.length > 0) {
         // Détection des nouveaux rendez-vous créés par un autre utilisateur
         try {
@@ -2264,15 +2337,6 @@ async function loadAndRender() {
           saveKnownAppointmentIds(appointments.map(a => a.id));
         } catch (e) {
           console.warn("Erreur vérification alertes sync:", e);
-        }
-
-        // Fusionner avec les RDV locaux non encore synchronisés avec Baserow
-        // (IDs temporaires = grands timestamps > 100000 qui ne sont pas dans Baserow)
-        const baserowIds = new Set(appointments.map(a => String(a.id)));
-        const localData = loadLocalAppointments();
-        const localOnlyAppts = localData.filter(a => !baserowIds.has(String(a.id)));
-        if (localOnlyAppts.length > 0) {
-          appointments = [...localOnlyAppts, ...appointments];
         }
 
         saveLocalAppointments(appointments);
@@ -2294,9 +2358,6 @@ async function loadAndRender() {
   updateStats(appointments);
 }
 
-// =============================================================
-// RENDU DYNAMIQUE DES STYLES & FILTRES
-// =============================================================
 function renderDynamicStyles() {
   const styles = loadCustomStyles();
 
@@ -2367,7 +2428,7 @@ function renderDynamicStyles() {
 // =============================================================
 // INITIALISATION DE L'APPLICATION
 // =============================================================
-document.addEventListener("DOMContentLoaded", () => {
+function initApplication() {
   // 1. Navigation par onglets
   document.querySelectorAll(".nav-item").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -2416,8 +2477,16 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // 4. Formulaire RDV
+  // 4. Formulaire RDV
   const form = document.getElementById("appointment-form");
   if (form) form.addEventListener("submit", submitForm);
+
+  const saveRdvBtn = document.getElementById("btn-save-rdv");
+  if (saveRdvBtn) {
+    saveRdvBtn.addEventListener("click", (e) => {
+      submitForm(e);
+    });
+  }
 
   const cancelBtn = document.getElementById("btn-cancel-edit");
   if (cancelBtn) cancelBtn.addEventListener("click", resetForm);
@@ -2665,21 +2734,84 @@ document.addEventListener("DOMContentLoaded", () => {
     lockCurrentSession();
   });
 
+  // Sélection rapide par boutons utilisateur
   document.getElementById("auth-select-christophe")?.addEventListener("click", () => {
     playSound('click');
-    selectAuthUser("Christophe");
+    selectAuthUser("christophe.gontier@outlook.fr");
   });
 
   document.getElementById("auth-select-dorianne")?.addEventListener("click", () => {
     playSound('click');
-    selectAuthUser("Dorianne");
+    selectAuthUser("dorianne.dbe@free.fr");
+  });
+
+  // Détection automatique lors de la frappe dans le champ Courriel
+  document.getElementById("auth-email-input")?.addEventListener("input", (e) => {
+    const val = e.target.value.trim().toLowerCase();
+    const btnChristophe = document.getElementById("auth-select-christophe");
+    const btnDorianne = document.getElementById("auth-select-dorianne");
+    if (val.includes("dorianne")) {
+      btnChristophe?.classList.remove("active");
+      btnDorianne?.classList.add("active");
+      selectedAuthUser = "dorianne.dbe@free.fr";
+      const lbl = document.getElementById("auth-selected-name");
+      if (lbl) lbl.textContent = "Dorianne (dorianne.dbe@free.fr)";
+    } else if (val.includes("christophe")) {
+      btnDorianne?.classList.remove("active");
+      btnChristophe?.classList.add("active");
+      selectedAuthUser = "christophe.gontier@outlook.fr";
+      const lbl = document.getElementById("auth-selected-name");
+      if (lbl) lbl.textContent = "Christophe (christophe.gontier@outlook.fr)";
+    }
   });
 
   document.getElementById("auth-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
+    const emailVal = document.getElementById("auth-email-input")?.value.trim() || "";
     const pwd = document.getElementById("auth-password-input")?.value.trim() || "";
     const rem = document.getElementById("auth-remember-me")?.checked ?? true;
-    await attemptLogin(pwd, rem);
+    await attemptLogin(pwd, rem, emailVal);
+  });
+
+  // Gestionnaire de passerelles SMS (Free Mobile & Webhook)
+  const savedFreeUser = localStorage.getItem("dunkirk_freemobile_user_v1") || "";
+  const savedFreePass = localStorage.getItem("dunkirk_freemobile_pass_v1") || "";
+  const freeUserEl = document.getElementById("admin-freemobile-user");
+  const freePassEl = document.getElementById("admin-freemobile-pass");
+  if (freeUserEl && savedFreeUser) freeUserEl.value = savedFreeUser;
+  if (freePassEl && savedFreePass) freePassEl.value = savedFreePass;
+
+  document.getElementById("btn-save-freemobile")?.addEventListener("click", () => {
+    const userVal = document.getElementById("admin-freemobile-user")?.value.trim() || "";
+    const passVal = document.getElementById("admin-freemobile-pass")?.value.trim() || "";
+    localStorage.setItem("dunkirk_freemobile_user_v1", userVal);
+    localStorage.setItem("dunkirk_freemobile_pass_v1", passVal);
+    playSound('click');
+    showToast("Identifiants Free Mobile SMS sauvegardés ! 📱", "💾");
+    addAuditLog("Passerelle Free Mobile SMS mise à jour");
+  });
+
+  const savedSmsWebhook = localStorage.getItem("dunkirk_sms_gateway_v1") || "";
+  const smsWebhookInput = document.getElementById("admin-sms-webhook-input");
+  if (smsWebhookInput && savedSmsWebhook) {
+    smsWebhookInput.value = savedSmsWebhook;
+  }
+  document.getElementById("btn-save-sms-webhook")?.addEventListener("click", () => {
+    const val = document.getElementById("admin-sms-webhook-input")?.value.trim() || "";
+    localStorage.setItem("dunkirk_sms_gateway_v1", val);
+    playSound('click');
+    showToast("Passerelle Webhook enregistrée ! 📱", "💾");
+    addAuditLog(`Passerelle SMS Webhook configurée: ${val || 'désactivée'}`);
+  });
+
+  // Boutons de test SMS direct Admin
+  document.getElementById("btn-test-sms-christophe")?.addEventListener("click", () => {
+    addAuditLog("Test SMS déclenché pour Christophe (0783141740)");
+    showToast("SMS de test préparé pour Christophe (07 83 14 17 40) !", "📱");
+  });
+  document.getElementById("btn-test-sms-dorianne")?.addEventListener("click", () => {
+    addAuditLog("Test SMS déclenché pour Dorianne (0651631615)");
+    showToast("SMS de test préparé pour Dorianne (06 51 63 16 15) !", "📱");
   });
 
   // Bouton de synchronisation manuelle des utilisateurs Baserow
@@ -2905,7 +3037,14 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("focus", () => {
     loadAndRender();
   });
-});
+}
+
+// Lancement résilient (gère document déjà prêt ou chargement asynchrone de module)
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initApplication);
+} else {
+  initApplication();
+}
 
 // Exportation globale pour les onclick inline
 export const app = {
@@ -2953,7 +3092,8 @@ export const app = {
   showAppointmentAlert,
   closeAppointmentAlert,
   notifyNewAppointmentFromOtherUser,
-  triggerSystemNotification
+  triggerSystemNotification,
+  submitForm
 };
 
 window.app = app;
