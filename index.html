@@ -4564,48 +4564,54 @@
     }
 
     export async function dispatchSmsGateway(cleanPhone, rawPhone, messageText, recipient) {
-      const webhookUrl = localStorage.getItem("dunkirk_sms_gateway_v1");
-      if (!webhookUrl || !webhookUrl.trim()) return;
-
-      try {
-        if (webhookUrl.includes("smsapi.free-mobile.fr")) {
-          const sep = webhookUrl.includes("?") ? "&" : "?";
-          const finalUrl = `${webhookUrl}${sep}msg=${encodeURIComponent(messageText)}`;
-          await fetch(finalUrl, { mode: "no-cors" });
-        } else {
-          await fetch(webhookUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              event: "NEW_APPOINTMENT_SMS",
-              recipientName: recipient.displayName || recipient.name,
-              recipientPhone: cleanPhone,
-              rawPhone: rawPhone,
-              message: messageText,
-              timestamp: new Date().toISOString()
-            })
-          });
+      // 1. Passerelle Free Mobile SMS officielle directe (100% gratuit et instantané via smsapi.free-mobile.fr)
+      const freeUser = localStorage.getItem("dunkirk_freemobile_user_v1");
+      const freePass = localStorage.getItem("dunkirk_freemobile_pass_v1");
+      if (freeUser && freePass && freeUser.trim() && freePass.trim()) {
+        try {
+          const freeUrl = `https://smsapi.free-mobile.fr/sendmsg?user=${encodeURIComponent(freeUser.trim())}&pass=${encodeURIComponent(freePass.trim())}&msg=${encodeURIComponent(messageText)}`;
+          await fetch(freeUrl, { mode: "no-cors" });
+          console.log(`[SMS Gateway Free Mobile] Alerte SMS expédiée pour ${recipient?.displayName || cleanPhone}`);
+        } catch (err) {
+          console.warn("[SMS Gateway Free Mobile] Erreur :", err);
         }
-        console.log(`[SMS Gateway] Envoyé avec succès à ${recipient.displayName} (${cleanPhone})`);
-      } catch (err) {
-        console.warn(`[SMS Gateway] Erreur envoi automatique :`, err);
+      }
+
+      // 2. Passerelle Webhook si configurée
+      const webhookUrl = localStorage.getItem("dunkirk_sms_gateway_v1");
+      if (webhookUrl && webhookUrl.trim()) {
+        try {
+          if (webhookUrl.includes("smsapi.free-mobile.fr")) {
+            const sep = webhookUrl.includes("?") ? "&" : "?";
+            const finalUrl = `${webhookUrl}${sep}msg=${encodeURIComponent(messageText)}`;
+            await fetch(finalUrl, { mode: "no-cors" });
+          } else {
+            await fetch(webhookUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                event: "NEW_APPOINTMENT_SMS",
+                recipientName: recipient?.displayName || recipient?.name || "Tous",
+                recipientPhone: cleanPhone,
+                rawPhone: rawPhone,
+                message: messageText,
+                timestamp: new Date().toISOString()
+              })
+            });
+          }
+          console.log(`[SMS Gateway Webhook] Envoyé avec succès à ${recipient?.displayName || cleanPhone}`);
+        } catch (err) {
+          console.warn(`[SMS Gateway Webhook] Erreur envoi automatique :`, err);
+        }
       }
     }
 
     export function triggerAppointmentSmsNotification(appt, isNew = true) {
       const { userChristophe, userDorianne } = getRegisteredUsersInfo();
       const currentUserName = window.__currentUser?.displayName || "Agenda Dunkirk";
-      const targetUserStr = (appt.user || "").trim().toLowerCase();
 
-      const recipients = [];
-      if (targetUserStr === "christophe") {
-        recipients.push(userChristophe);
-      } else if (targetUserStr === "dorianne") {
-        recipients.push(userDorianne);
-      } else {
-        recipients.push(userChristophe);
-        recipients.push(userDorianne);
-      }
+      // Prévenir TOUS les utilisateurs enregistrés (Christophe ET Dorianne) pour tout nouveau rendez-vous
+      const recipients = [userChristophe, userDorianne].filter(Boolean);
 
       recipients.forEach(r => {
         const rawPhone = (r.phone || "").replace(/\s+/g, "");
@@ -5745,20 +5751,24 @@
       modal.dataset.rdvId = String(appt.id);
       modal.classList.remove("hidden");
 
-      // Bouton d'alerte SMS directe vers le destinataire Table 1273
+      // Bouton d'alerte SMS directe vers tous les utilisateurs (Christophe & Dorianne)
       const alertSmsBtn = document.getElementById("alert-modal-btn-sms");
       if (alertSmsBtn) {
         const { userChristophe, userDorianne } = getRegisteredUsersInfo();
-        const targetUser = (appt.user === "Dorianne") ? userDorianne : userChristophe;
-        const phone = targetUser?.phone || (appt.user === "Dorianne" ? "0651631615" : "0783141740");
-        const cleanPhone = phone.replace(/\s+/g, "").startsWith("0") ? "+33" + phone.replace(/\s+/g, "").slice(1) : phone.replace(/\s+/g, "");
+        const phoneChristophe = userChristophe?.phone || "0783141740";
+        const phoneDorianne = userDorianne?.phone || "0651631615";
+        const cleanChris = phoneChristophe.startsWith("0") ? "+33" + phoneChristophe.slice(1) : phoneChristophe;
+        const cleanDori = phoneDorianne.startsWith("0") ? "+33" + phoneDorianne.slice(1) : phoneDorianne;
         const smsText = buildAppointmentSmsText(appt, window.__currentUser?.displayName);
-        alertSmsBtn.href = `sms:${cleanPhone}?body=${encodeURIComponent(smsText)}`;
-        alertSmsBtn.textContent = `📱 Envoyer SMS à ${appt.user} (${phone})`;
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        const separator = isIOS ? ";" : ",";
+        const allPhones = `${cleanChris}${separator}${cleanDori}`;
+        alertSmsBtn.href = `sms:${allPhones}?body=${encodeURIComponent(smsText)}`;
+        alertSmsBtn.textContent = `📱 Alerter par SMS (Christophe & Dorianne)`;
         alertSmsBtn.style.display = "inline-flex";
         alertSmsBtn.onclick = () => {
-          addAuditLog(`📱 SMS d'alerte envoyé vers ${phone} (${appt.user}) pour "${appt.titre}"`);
-          showToast(`SMS préparé vers ${phone} ! 🚀`, "📱");
+          addAuditLog(`📱 Alerte SMS préparée pour Christophe (${phoneChristophe}) et Dorianne (${phoneDorianne}) : "${appt.titre}"`);
+          showToast(`SMS préparé pour Christophe et Dorianne ! 🚀`, "📱");
         };
       }
 
@@ -5989,11 +5999,14 @@
       window.__selectedAppointment = null;
     }
 
+    let isFormSubmittingLock = false;
     async function submitForm(e) {
       if (e) {
         if (typeof e.preventDefault === "function") e.preventDefault();
         if (typeof e.stopPropagation === "function") e.stopPropagation();
       }
+      if (isFormSubmittingLock) return;
+      isFormSubmittingLock = true;
 
       const form = document.getElementById("appointment-form");
       if (form && typeof form.checkValidity === "function" && !form.checkValidity()) {
@@ -6156,6 +6169,8 @@
       } catch (err) {
         console.warn("Synchronisation Baserow différée (mode hors-ligne actif):", err);
         checkCloudStatus(false);
+      } finally {
+        setTimeout(() => { isFormSubmittingLock = false; }, 800);
       }
     }
 
@@ -6516,7 +6531,10 @@
       }
     }
 
+    let isSyncingPendingLock = false;
     async function syncPendingLocalAppointments() {
+      if (isSyncingPendingLock) return;
+      isSyncingPendingLock = true;
       try {
         const local = loadLocalAppointments();
         const pending = local.filter(a => isNaN(Number(a.id)) || Number(a.id) > 100000);
@@ -6553,6 +6571,8 @@
         }
       } catch (e) {
         // Différé si hors ligne
+      } finally {
+        isSyncingPendingLock = false;
       }
     }
 
@@ -6748,16 +6768,9 @@
         });
       }
 
-      // 4. Formulaire RDV
+      // 4. Formulaire RDV (soumission unique et sécurisée)
       const form = document.getElementById("appointment-form");
       if (form) form.addEventListener("submit", submitForm);
-
-      const saveRdvBtn = document.getElementById("btn-save-rdv");
-      if (saveRdvBtn) {
-        saveRdvBtn.addEventListener("click", (e) => {
-          submitForm(e);
-        });
-      }
 
       const cancelBtn = document.getElementById("btn-cancel-edit");
       if (cancelBtn) cancelBtn.addEventListener("click", resetForm);
