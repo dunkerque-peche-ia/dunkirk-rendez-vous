@@ -3414,7 +3414,7 @@
               <div class="address-input-wrapper">
                 <input type="text" id="rdv-address" class="form-control"
                   placeholder="Saisir une adresse ou un nom d'entreprise (ex: Auchan, Clinique, Malo...)"
-                  autocomplete="off" required>
+                  autocomplete="off">
                 <div id="address-suggestions" class="address-dropdown hidden"></div>
               </div>
               <input type="hidden" id="rdv-lat" value="">
@@ -6002,175 +6002,189 @@
     let isFormSubmittingLock = false;
     async function submitForm(e) {
       if (e) {
-        if (typeof e.preventDefault === "function") e.preventDefault();
-        if (typeof e.stopPropagation === "function") e.stopPropagation();
+        try { if (typeof e.preventDefault === "function") e.preventDefault(); } catch (_) {}
+        try { if (typeof e.stopPropagation === "function") e.stopPropagation(); } catch (_) {}
       }
-      if (isFormSubmittingLock) return;
+      if (isFormSubmittingLock) {
+        console.warn("Soumission déjà en cours...");
+        return;
+      }
       isFormSubmittingLock = true;
 
-      const form = document.getElementById("appointment-form");
-      if (form && typeof form.checkValidity === "function" && !form.checkValidity()) {
-        if (typeof form.reportValidity === "function") form.reportValidity();
-        return;
-      }
-
-      const id = (document.getElementById("edit-rdv-id")?.value || "").trim();
-
-      // Récupération fiable de l'utilisateur sélectionné
-      let selectedUser = "Dorianne";
-      const checkedRadio = document.querySelector("input[name='rdv-user']:checked");
-      if (checkedRadio && checkedRadio.value) {
-        selectedUser = checkedRadio.value;
-      }
-
-      const titre = (document.getElementById("rdv-title")?.value || "").trim();
-      if (!titre) {
-        showToast("Veuillez saisir un motif pour le rendez-vous ✍️", "⚠️");
-        document.getElementById("rdv-title")?.focus();
-        return;
-      }
-
-      const dateVal = document.getElementById("rdv-date")?.value || new Date().toISOString().split("T")[0];
-      const heureVal = document.getElementById("rdv-time")?.value || "12:00";
-      const adresseVal = (document.getElementById("rdv-address")?.value || "").trim();
-
-      const data = {
-        user: selectedUser,
-        categorie: document.querySelector("input[name='rdv-style']:checked")?.value || "Co-transportage",
-        titre: titre,
-        date: dateVal,
-        heure: heureVal,
-        adresse: adresseVal || "Dunkerque (59140)",
-        latitude: parseFloat(document.getElementById("rdv-lat")?.value) || 51.0343,
-        longitude: parseFloat(document.getElementById("rdv-lon")?.value) || 2.3768,
-        contact: (document.getElementById("rdv-contact-name")?.value || "").trim(),
-        telephone: (document.getElementById("rdv-contact-phone")?.value || "").trim(),
-        notes: (document.getElementById("rdv-notes")?.value || "").trim(),
-        alerte_minutes: parseInt(document.getElementById("rdv-alert-lead")?.value, 10) || 30,
-      };
-
-      let local = loadLocalAppointments();
-      let createdLocalId = null;
-
-      if (id) {
-        const idx = local.findIndex(a => String(a.id) === String(id));
-        if (idx >= 0) {
-          local[idx] = { ...local[idx], ...data };
-        } else {
-          local.unshift({ id: isNaN(Number(id)) ? id : Number(id), ...data });
-        }
-      } else {
-        createdLocalId = Date.now();
-        local.unshift({ id: createdLocalId, ...data });
-      }
-
-      saveLocalAppointments(local);
-      window.__appointments = local;
-
-      // IMPORTANT : Déclaration prioritaire de targetAppt AVANT toute utilisation
-      const targetAppt = local.find(a => String(a.id) === String(id || createdLocalId)) || { ...data, id: id || createdLocalId };
-
-      // Mettre à jour window.__selectedAppointment si on était en mode édition
-      if (id) {
-        const updatedAppt = local.find(a => String(a.id) === String(id));
-        if (updatedAppt) window.__selectedAppointment = updatedAppt;
-      }
-
-      renderAppointments(local);
-      updateStats(local);
-
-      playSound('carillon');
-      launchConfetti();
-
-      // Message de confirmation clair lors de l'ajout
-      showToast(id ? "Rendez-vous modifié avec succès !" : "Rendez-vous ajouté avec succès !", "✅");
-
-      // Mémoriser l'ID créé par nous pour ne pas s'auto-alerter
-      markIdAsLocallyCreated(id || createdLocalId);
-      markIdAsKnown(id || createdLocalId);
-
-      // Avertissement par SMS automatique pour les utilisateurs (Table Baserow 1273)
-      if (!id) {
-        try {
-          triggerAppointmentSmsNotification(targetAppt, true);
-        } catch(smsErr) {
-          console.warn("Erreur déclenchement SMS automatique:", smsErr);
-        }
-      }
-
-      // Informer instantanément les autres fenêtres / onglets
-      if (syncChannel) {
-        syncChannel.postMessage({
-          type: 'NEW_APPOINTMENT_ADDED',
-          appointment: targetAppt,
-          senderSessionId: getMySessionId()
-        });
-      }
-
-      resetForm();
-      app.switchTab("planning");
-
-      // Afficher la modal d'alerte pour confirmer l'ajout / modification
-      setTimeout(() => {
-        try {
-          showAppointmentAlert(targetAppt, !id, false);
-        } catch (err) {
-          console.warn("Erreur affichage modal alerte:", err);
-        }
-      }, 400);
-
-      // Synchronisation asynchrone avec Baserow (capitalisé pour Baserow)
-      const baserowData = {
-        Titre: data.titre,
-        Utilisateur: data.user,
-        Categorie: data.categorie,
-        Date: data.date,
-        Heure: data.heure,
-        Adresse: data.adresse,
-        Latitude: data.latitude,
-        Longitude: data.longitude,
-        Contact: data.contact,
-        Telephone: data.telephone,
-        AlerteMinutes: data.alerte_minutes,
-        Notes: data.notes
-      };
-
       try {
-        if (id && !isNaN(Number(id)) && Number(id) < 100000) {
-          await apiFetch(`/database/rows/table/${TABLE_ID}/${id}/?user_field_names=true`, {
-            method: "PATCH",
-            body: JSON.stringify(baserowData),
-          });
+        const titreInput = document.getElementById("rdv-title");
+        const titre = (titreInput?.value || "").trim();
+        if (!titre) {
+          showToast("Veuillez saisir un motif pour le rendez-vous ✍️", "⚠️");
+          if (titreInput) titreInput.focus();
+          return;
+        }
+
+        const id = (document.getElementById("edit-rdv-id")?.value || "").trim();
+
+        // Récupération fiable de l'utilisateur sélectionné
+        let selectedUser = "Dorianne";
+        const checkedRadio = document.querySelector("input[name='rdv-user']:checked");
+        if (checkedRadio && checkedRadio.value) {
+          selectedUser = checkedRadio.value;
+        }
+
+        const dateVal = document.getElementById("rdv-date")?.value || new Date().toISOString().split("T")[0];
+        const heureVal = document.getElementById("rdv-time")?.value || "12:00";
+        const adresseVal = (document.getElementById("rdv-address")?.value || "").trim();
+
+        const data = {
+          user: selectedUser,
+          categorie: document.querySelector("input[name='rdv-style']:checked")?.value || "Co-transportage",
+          titre: titre,
+          date: dateVal,
+          heure: heureVal,
+          adresse: adresseVal || "Dunkerque (59140)",
+          latitude: parseFloat(document.getElementById("rdv-lat")?.value) || 51.0343,
+          longitude: parseFloat(document.getElementById("rdv-lon")?.value) || 2.3768,
+          contact: (document.getElementById("rdv-contact-name")?.value || "").trim(),
+          telephone: (document.getElementById("rdv-contact-phone")?.value || "").trim(),
+          notes: (document.getElementById("rdv-notes")?.value || "").trim(),
+          alerte_minutes: parseInt(document.getElementById("rdv-alert-lead")?.value, 10) || 30,
+        };
+
+        let local = loadLocalAppointments();
+        let createdLocalId = null;
+
+        if (id) {
+          const idx = local.findIndex(a => String(a.id) === String(id));
+          if (idx >= 0) {
+            local[idx] = { ...local[idx], ...data };
+          } else {
+            local.unshift({ id: isNaN(Number(id)) ? id : Number(id), ...data });
+          }
         } else {
-          const created = await apiFetch(`/database/rows/table/${TABLE_ID}/?user_field_names=true`, {
-            method: "POST",
-            body: JSON.stringify(baserowData),
-          });
-          if (created && created.id) {
-            let currentLocal = loadLocalAppointments();
-            const foundIdx = currentLocal.findIndex(a => a.id === createdLocalId);
-            if (foundIdx >= 0) {
-              currentLocal[foundIdx].id = created.id;
-            } else {
-              // Si non présent dans le local (cas de concurrence), l'insérer
-              if (!currentLocal.some(a => String(a.id) === String(created.id))) {
-                currentLocal.unshift({ ...data, id: created.id });
-              }
-            }
-            markIdAsLocallyCreated(created.id);
-            markIdAsKnown(created.id);
-            saveLocalAppointments(currentLocal);
-            window.__appointments = currentLocal;
-            renderAppointments(currentLocal);
-            updateStats(currentLocal);
+          createdLocalId = Date.now();
+          local.unshift({ id: createdLocalId, ...data });
+        }
+
+        saveLocalAppointments(local);
+        window.__appointments = local;
+
+        // Réinitialiser les filtres du planning pour afficher immédiatement le rendez-vous créé
+        currentFilterUser = "all";
+        currentFilterCategory = "all";
+        currentSearchQuery = "";
+        document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active"));
+        document.querySelector(".filter-chip[data-category='all']")?.classList.add("active");
+        const searchInput = document.getElementById("search-input");
+        if (searchInput) searchInput.value = "";
+        const clearSearch = document.getElementById("clear-search-btn");
+        if (clearSearch) clearSearch.classList.add("hidden");
+
+        // IMPORTANT : Déclaration prioritaire de targetAppt AVANT toute utilisation
+        const targetAppt = local.find(a => String(a.id) === String(id || createdLocalId)) || { ...data, id: id || createdLocalId };
+
+        // Mettre à jour window.__selectedAppointment si on était en mode édition
+        if (id) {
+          const updatedAppt = local.find(a => String(a.id) === String(id));
+          if (updatedAppt) window.__selectedAppointment = updatedAppt;
+        }
+
+        renderAppointments(local);
+        updateStats(local);
+
+        playSound('carillon');
+        launchConfetti();
+
+        // Message de confirmation clair lors de l'ajout
+        showToast(id ? "Rendez-vous modifié avec succès !" : "Rendez-vous ajouté avec succès !", "✅");
+
+        // Mémoriser l'ID créé par nous pour ne pas s'auto-alerter
+        markIdAsLocallyCreated(id || createdLocalId);
+        markIdAsKnown(id || createdLocalId);
+
+        // Avertissement par SMS automatique pour les utilisateurs (Table Baserow 1273)
+        if (!id) {
+          try {
+            triggerAppointmentSmsNotification(targetAppt, true);
+          } catch(smsErr) {
+            console.warn("Erreur déclenchement SMS automatique:", smsErr);
           }
         }
-        checkCloudStatus(true);
-      } catch (err) {
-        console.warn("Synchronisation Baserow différée (mode hors-ligne actif):", err);
-        checkCloudStatus(false);
+
+        // Informer instantanément les autres fenêtres / onglets
+        if (syncChannel) {
+          syncChannel.postMessage({
+            type: 'NEW_APPOINTMENT_ADDED',
+            appointment: targetAppt,
+            senderSessionId: getMySessionId()
+          });
+        }
+
+        resetForm();
+        app.switchTab("planning");
+
+        // Afficher la modal d'alerte pour confirmer l'ajout / modification
+        setTimeout(() => {
+          try {
+            showAppointmentAlert(targetAppt, !id, false);
+          } catch (err) {
+            console.warn("Erreur affichage modal alerte:", err);
+          }
+        }, 400);
+
+        // Synchronisation asynchrone avec Baserow (capitalisé pour Baserow)
+        const baserowData = {
+          Titre: data.titre,
+          Utilisateur: data.user,
+          Categorie: data.categorie,
+          Date: data.date,
+          Heure: data.heure,
+          Adresse: data.adresse,
+          Latitude: data.latitude,
+          Longitude: data.longitude,
+          Contact: data.contact,
+          Telephone: data.telephone,
+          AlerteMinutes: data.alerte_minutes,
+          Notes: data.notes
+        };
+
+        try {
+          if (id && !isNaN(Number(id)) && Number(id) < 100000) {
+            await apiFetch(`/database/rows/table/${TABLE_ID}/${id}/?user_field_names=true`, {
+              method: "PATCH",
+              body: JSON.stringify(baserowData),
+            });
+          } else {
+            const created = await apiFetch(`/database/rows/table/${TABLE_ID}/?user_field_names=true`, {
+              method: "POST",
+              body: JSON.stringify(baserowData),
+            });
+            if (created && created.id) {
+              let currentLocal = loadLocalAppointments();
+              const foundIdx = currentLocal.findIndex(a => String(a.id) === String(createdLocalId));
+              if (foundIdx >= 0) {
+                currentLocal[foundIdx].id = created.id;
+              } else {
+                if (!currentLocal.some(a => String(a.id) === String(created.id))) {
+                  currentLocal.unshift({ ...data, id: created.id });
+                }
+              }
+              markIdAsLocallyCreated(created.id);
+              markIdAsKnown(created.id);
+              saveLocalAppointments(currentLocal);
+              window.__appointments = currentLocal;
+              renderAppointments(currentLocal);
+              updateStats(currentLocal);
+              showToast("Rendez-vous synchronisé dans Baserow !", "☁️");
+            }
+          }
+          checkCloudStatus(true);
+        } catch (err) {
+          console.warn("Synchronisation Baserow différée (mode hors-ligne actif):", err);
+          checkCloudStatus(false);
+        }
+      } catch (fatalErr) {
+        console.error("Erreur générale enregistrement RDV:", fatalErr);
+        showToast("Erreur inattendue lors de l'enregistrement", "❌");
       } finally {
-        setTimeout(() => { isFormSubmittingLock = false; }, 800);
+        setTimeout(() => { isFormSubmittingLock = false; }, 400);
       }
     }
 
@@ -6771,6 +6785,13 @@
       // 4. Formulaire RDV (soumission unique et sécurisée)
       const form = document.getElementById("appointment-form");
       if (form) form.addEventListener("submit", submitForm);
+
+      const saveRdvBtn = document.getElementById("btn-save-rdv");
+      if (saveRdvBtn) {
+        saveRdvBtn.addEventListener("click", (e) => {
+          submitForm(e);
+        });
+      }
 
       const cancelBtn = document.getElementById("btn-cancel-edit");
       if (cancelBtn) cancelBtn.addEventListener("click", resetForm);

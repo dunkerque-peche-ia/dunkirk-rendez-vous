@@ -1,5 +1,5 @@
 // Service Worker pour Dunkirk RDV Mobile
-const CACHE_NAME = 'dunkirk-rdv-v3';
+const CACHE_NAME = 'dunkirk-rdv-v4';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
