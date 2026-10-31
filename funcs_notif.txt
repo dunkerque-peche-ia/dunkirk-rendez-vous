@@ -1,0 +1,97 @@
+
+
+==================== function triggerSystemNotification ====================
+function triggerSystemNotification(title, body, icon = "icons/icon-192.png") {
+      if (!("Notification" in window)) return;
+      if (Notification.permission === "granted") {
+        try {
+          new Notification(title, {
+            body,
+            icon,
+            badge: icon
+          });
+        } catch (e) {
+          console.warn("Erreur déclenchement notification:", e);
+        }
+      }
+    }
+
+    function formatFrenchFullDate(dateStr, timeStr) {
+      if (!dateStr) return timeStr || "--";
+      try {
+        const [y, m, d] = dateStr.split("-").map(Number);
+        const dateObj = new Date(y, m - 1, d);
+        const days = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+        const months = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
+        const dayName = days[dateObj.getDay()] || "";
+        const monthName = months[dateObj.getMonth()] || "";
+        return `${dayName} ${d} ${monthName}${timeStr ? ` à ${timeStr}` : ""}`;
+      } catch (e) {
+        return `${dateStr} à ${timeStr}`;
+      }
+    }
+
+    export function showAppointmentAlert(appt, isNew = true, isFromOtherUser = false) {
+      const modal = document.getElementById("new-rdv-alert-modal");
+      if (!modal) return;
+
+      const headingEl = modal.querySelector(".alert-modal-heading");
+      if (headingEl) {
+        if (isFromOtherUser) {
+          headingEl.textContent = `🚨 Alerte : ${appt.
+
+==================== function dispatchSmsGateway ====================
+function dispatchSmsGateway(cleanPhone, rawPhone, messageText, recipient) {
+      // 1. Passerelle Free Mobile SMS officielle directe (100% gratuit et instantané via smsapi.free-mobile.fr)
+      const freeUser = localStorage.getItem("dunkirk_freemobile_user_v1");
+      const freePass = localStorage.getItem("dunkirk_freemobile_pass_v1");
+      if (freeUser && freePass && freeUser.trim() && freePass.trim()) {
+        try {
+          const freeUrl = `https://smsapi.free-mobile.fr/sendmsg?user=${encodeURIComponent(freeUser.trim())}&pass=${encodeURIComponent(freePass.trim())}&msg=${encodeURIComponent(messageText)}`;
+          await fetch(freeUrl, { mode: "no-cors" });
+          console.log(`[SMS Gateway Free Mobile] Alerte SMS expédiée pour ${recipient?.displayName || cleanPhone}`);
+        } catch (err) {
+          console.warn("[SMS Gateway Free Mobile] Erreur :", err);
+        }
+      }
+
+      // 2. Passerelle Webhook si configurée
+      const webhookUrl = localStorage.getItem("dunkirk_sms_gateway_v1");
+      if (webhookUrl && webhookUrl.trim()) {
+        try {
+          if (webhookUrl.includes("smsapi.free-mobile.fr")) {
+            const sep = webhookUrl.includes("?") ? "&" : "?";
+            const finalUrl = `${webhookUrl}${sep}msg=${encodeURIComponent(messageText)}`;
+            await fetch(finalUrl, { mode: "no-cors" });
+          } else {
+            await fetch(webhookUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+    
+
+==================== function buildAppointmentSmsText ====================
+function buildAppointmentSmsText(appt, senderName = null) {
+      const sender = senderName || window.__currentUser?.displayName || "Agenda Dunkirk";
+      const dateStr = appt.date || "";
+      const timeStr = appt.heure ? ` à ${appt.heure}` : "";
+      const placeStr = appt.adresse ? ` (${appt.adresse})` : "";
+      return `🚨 Agenda Dunkirk: Nouveau RDV "${appt.titre || 'Rendez-vous'}" le ${dateStr}${timeStr}${placeStr}. Inscrit par ${sender}.`;
+    }
+
+    export async function dispatchSmsGateway(cleanPhone, rawPhone, messageText, recipient) {
+      // 1. Passerelle Free Mobile SMS officielle directe (100% gratuit et instantané via smsapi.free-mobile.fr)
+      const freeUser = localStorage.getItem("dunkirk_freemobile_user_v1");
+      const freePass = localStorage.getItem("dunkirk_freemobile_pass_v1");
+      if (freeUser && freePass && freeUser.trim() && freePass.trim()) {
+        try {
+          const freeUrl = `https://smsapi.free-mobile.fr/sendmsg?user=${encodeURIComponent(freeUser.trim())}&pass=${encodeURIComponent(freePass.trim())}&msg=${encodeURIComponent(messageText)}`;
+          await fetch(freeUrl, { mode: "no-cors" });
+          console.log(`[SMS Gateway Free Mobile] Alerte SMS expédiée pour ${recipient?.displayName || cleanPhone}`);
+        } catch (err) {
+          console.warn("[SMS Gateway Free Mobile] Erreur :", err);
+        }
+      }
+
+      // 2. Passerelle Webhook si configurée
+      const webhookUrl = localStorage.getItem("dunkirk_sms_gateway_v1");
+      i

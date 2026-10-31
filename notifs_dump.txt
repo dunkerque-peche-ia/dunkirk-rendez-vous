@@ -1,0 +1,151 @@
+
+
+==================== FOUND 'triggerAppointmentSmsNotification' AT 144665 ====================
+MS Gateway Webhook] Erreur envoi automatique :`, err);
+        }
+      }
+    }
+
+    export function triggerAppointmentSmsNotification(appt, isNew = true) {
+      const { userChristophe, userDorianne } = getRegisteredUsersInfo();
+      const currentUserName = window.__currentUser?.displayName || "Agenda Dunkirk";
+
+      // Prévenir TOUS les utilisateurs enregistrés (Christophe ET Dorianne) pour tout nouveau rendez-vous
+      const recipients = [userChristophe, userDorianne].filter(Boolean);
+
+      recipients.forEach(r => {
+        const rawPhone = (r.phone || "").replace(/\s+/g, "");
+        if (!rawPhone) return;
+        const cleanPhone = rawPhone.startsWith("0") ? "+33" + rawPhone.slice(1) : rawPhone;
+        const smsMessage = buildAppointmentSmsText(appt, currentUserName);
+
+        // Journal d'audit
+        addAuditLog(`📱 Alerte SMS générée pour ${r.displayName} (${rawPhone}) : "${appt.titre}"`, currentUserName);
+
+        // Notification visuelle
+        showToast(`📱 SMS d'alerte préparé pour ${r.displayName} (${rawPhone})`, "📱");
+
+        // Envoi via passerelle automatique si configurée
+        dispatchSmsGateway(cleanPhone, rawPhone, smsMessage, r);
+      });
+    }
+
+    function renderUserSelectorButtons() {
+      const container = document.querySelector(".auth-user-selec
+
+==================== FOUND 'triggerAppointmentSmsNotification' AT 193605 ====================
+ser} !`,
+        `"${appt.titre}" prévu le ${formatDateTime(appt.date, appt.heure)}`
+      );
+      triggerAppointmentSmsNotification(appt, true);
+      showAppointmentAlert(appt, true, true);
+      launchConfetti();
+    }
+
+    export function closeAppointmentAlert() {
+      const modal = document.getElementById("new-rdv-alert-modal");
+      if (modal) modal.classList.add("hidden");
+    }
+
+    // =============================================================
+    // MODAL DÉTAILS
+    // =============================================================
+    function openDetailModal(appt) {
+      const modal = document.getElementById("rdv-detail-modal");
+      if (!modal) return;
+
+      const userBadge = document.getElementById("modal-user-badge");
+      const catBadge = document.getElementById("modal-category-badge");
+      const title = document.getElementById("modal-rdv-title");
+      const datetime = document.getElementById("modal-datetime");
+      const address = document.getElementById("modal-address");
+      const contact = document.getElementById("modal-contact");
+      const callBtn = document.getElementById("modal-call-btn");
+      const alertInfo = document.getElementById("modal-alert-info");
+      const notes = document.getElementById("modal-notes");
+
+      const userEmoji = a
+
+==================== FOUND 'triggerAppointmentSmsNotification' AT 208183 ====================
+tomatique pour les utilisateurs (Table Baserow 1273)
+        if (!id) {
+          try {
+            triggerAppointmentSmsNotification(targetAppt, true);
+          } catch(smsErr) {
+            console.warn("Erreur déclenchement SMS automatique:", smsErr);
+          }
+        }
+
+        // Informer instantanément les autres fenêtres / onglets
+        if (syncChannel) {
+          syncChannel.postMessage({
+            type: 'NEW_APPOINTMENT_ADDED',
+            appointment: targetAppt,
+            senderSessionId: getMySessionId()
+          });
+        }
+
+        resetForm();
+        app.switchTab("planning");
+
+        // Afficher la modal d'alerte pour confirmer l'ajout / modification
+        setTimeout(() => {
+          try {
+            showAppointmentAlert(targetAppt, !id, false);
+          } catch (err) {
+            console.warn("Erreur affichage modal alerte:", err);
+          }
+        }, 400);
+
+      } catch (fatalErr) {
+        console.error("Erreur générale enregistrement RDV:", fatalErr);
+        showToast("Erreur inattendue lors de l'enregistrement", "❌");
+      } finally {
+        setTimeout(() => { isFormSubmittingLock = false; }, 400);
+      }
+    }
+
+    function cancelEdit() {
+      resetForm();
+      app.switchTab("planning");
+    }
+
+    // =========================
+
+==================== FOUND 'requestPermission' AT 237557 ====================
+ "⚠️");
+            return;
+          }
+          try {
+            const perm = await Notification.requestPermission();
+            if (perm === "granted") {
+              btnReqNotif.textContent = "Activé ✅";
+              btnReqNotif.classList.add("secondary");
+              showToast("Notifications Web & Mobiles activées !", "🔔");
+              triggerSystemNotification("🔔 Dunkirk RDV Activé", "Vous recevrez une alerte pour chaque nouveau rendez-vous !");
+            } else {
+              showToast("Notifications refusées", "❌");
+            }
+          } catch (e) {
+            console.warn("Erreur demande permission notifications:", e);
+          }
+        });
+      }
+
+      // 10. Boîte à Sons interactive (Web Audio Synth Dunkirk IT)
+      document.querySelectorAll(".btn-fun-sound").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const sound = btn.dataset.sound;
+          playSound(sound);
+          if (sound === 'fanfare') launchConfetti();
+        });
+      });
+
+      // Bouton tester son dans paramètres alertes
+      document.getElementById("btn-test-sound")?.addEventListener("click", () => {
+        playSound('carillon');
+        showToast("Carillon Dunkirk IT testé avec succès !", "🔔");
+      });
+
+      // Bascule audio dans header
+      cons
