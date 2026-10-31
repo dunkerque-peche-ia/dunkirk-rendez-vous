@@ -968,12 +968,57 @@
       localStorage.setItem("custom_styles_dk", JSON.stringify(styles));
     }
 
+    function formatBaserowPayload(data) {
+      // Nettoyage strict et sécurisé des données numériques et textuelles pour Baserow Table 1246
+      let lat = null;
+      if (data.latitude !== undefined && data.latitude !== null && data.latitude !== "") {
+        const parsedLat = parseFloat(String(data.latitude).replace(",", "."));
+        lat = isNaN(parsedLat) ? 51.0343 : parsedLat;
+      } else {
+        lat = 51.0343;
+      }
+
+      let lon = null;
+      if (data.longitude !== undefined && data.longitude !== null && data.longitude !== "") {
+        const parsedLon = parseFloat(String(data.longitude).replace(",", "."));
+        lon = isNaN(parsedLon) ? 2.3768 : parsedLon;
+      } else {
+        lon = 2.3768;
+      }
+
+      let alerte = 30;
+      if (data.alerte_minutes !== undefined && data.alerte_minutes !== null && data.alerte_minutes !== "") {
+        const parsedAlert = parseInt(data.alerte_minutes, 10);
+        alerte = isNaN(parsedAlert) ? 30 : parsedAlert;
+      }
+
+      return {
+        Titre: (data.titre || "").trim(),
+        Utilisateur: (data.user || "Dorianne").trim(),
+        Categorie: (data.categorie || "Co-transportage").trim(),
+        Date: (data.date || new Date().toISOString().split("T")[0]).trim(),
+        Heure: (data.heure || "12:00").trim(),
+        Adresse: (data.adresse || "Dunkerque (59140)").trim(),
+        Latitude: lat,
+        Longitude: lon,
+        Contact: (data.contact || "").trim(),
+        Telephone: (data.telephone || "").trim(),
+        AlerteMinutes: alerte,
+        Notes: (data.notes || "").trim()
+      };
+    }
+
     async function apiFetch(path, options = {}) {
       const resp = await fetch(`${BASEROW_BASE_URL}${path}`, {
         ...options,
         headers: { ...(options.headers || {}), ...apiHeaders },
       });
-      if (!resp.ok) throw new Error(`Baserow request failed: ${resp.status}`);
+      if (!resp.ok) {
+        let errBody = "";
+        try { errBody = await resp.text(); } catch (_) {}
+        console.error(`[Baserow Error ${resp.status}]`, errBody);
+        throw new Error(`Baserow request failed: ${resp.status} - ${errBody}`);
+      }
       return resp.json();
     }
 
@@ -1019,7 +1064,7 @@
 
       const isTempId = !appt.id || Number(appt.id) > 100000 || isNaN(Number(appt.id));
       const idBadge = isTempId
-        ? `<span class="badge-sync-pending" title="En cours de synchronisation avec Baserow" style="font-size:0.68rem; background:rgba(221,167,39,0.18); color:var(--dk-gold); border:1px solid rgba(221,167,39,0.4); border-radius:12px; padding:0.15rem 0.5rem; font-weight:700;">⏳ Synchro...</span>`
+        ? `<span class="badge-sync-pending" onclick="event.stopPropagation(); app.syncNow();" title="Cliquez pour forcer la synchronisation avec Baserow" style="cursor:pointer; font-size:0.68rem; background:rgba(221,167,39,0.18); color:var(--dk-gold); border:1px solid rgba(221,167,39,0.4); border-radius:12px; padding:0.15rem 0.5rem; font-weight:700;">⏳ Synchro...</span>`
         : `<span style="font-size:0.75rem; color:#94A3B8; font-weight:700;">#${appt.id}</span>`;
 
       card.innerHTML = `
@@ -1521,7 +1566,9 @@
 
       const userEmoji = appt.user === "Dorianne" ? "👩" : (appt.user === "Christophe" ? "👨" : "👫");
       const userBadgeClass = appt.user === "Dorianne" ? "dorianne" : (appt.user === "Christophe" ? "christophe" : "");
-      userBadge.textContent = `${userEmoji} ${appt.user}`;
+      const isApptTemp = !appt.id || Number(appt.id) > 100000 || isNaN(Number(appt.id));
+      const idLabel = isApptTemp ? " (⏳ En attente de synchro Baserow)" : ` (Fiche #${appt.id})`;
+      userBadge.textContent = `${userEmoji} ${appt.user}${idLabel}`;
       userBadge.className = `user-mini-badge ${userBadgeClass}`;
       catBadge.textContent = appt.categorie || "Déplacement";
       title.textContent = appt.titre;
@@ -1752,20 +1799,7 @@
           alerte_minutes: parseInt(document.getElementById("rdv-alert-lead")?.value, 10) || 30,
         };
 
-        const baserowData = {
-          Titre: data.titre,
-          Utilisateur: data.user,
-          Categorie: data.categorie,
-          Date: data.date,
-          Heure: data.heure,
-          Adresse: data.adresse,
-          Latitude: data.latitude,
-          Longitude: data.longitude,
-          Contact: data.contact,
-          Telephone: data.telephone,
-          AlerteMinutes: data.alerte_minutes,
-          Notes: data.notes
-        };
+        const baserowData = formatBaserowPayload(data);
 
         let finalId = null;
         let baserowSuccess = false;
@@ -2255,36 +2289,28 @@
         const local = loadLocalAppointments();
         const pending = local.filter(a => isNaN(Number(a.id)) || Number(a.id) > 100000);
         for (const appt of pending) {
-          const baserowData = {
-            Titre: appt.titre,
-            Utilisateur: appt.user,
-            Categorie: appt.categorie,
-            Date: appt.date,
-            Heure: appt.heure,
-            Adresse: appt.adresse,
-            Latitude: appt.latitude,
-            Longitude: appt.longitude,
-            Contact: appt.contact,
-            Telephone: appt.telephone,
-            AlerteMinutes: appt.alerte_minutes,
-            Notes: appt.notes
-          };
-          const created = await apiFetch(`/database/rows/table/${TABLE_ID}/?user_field_names=true`, {
-            method: "POST",
-            body: JSON.stringify(baserowData),
-          });
-          if (created && created.id) {
-            let current = loadLocalAppointments();
-            const idx = current.findIndex(a => a.id === appt.id);
-            if (idx >= 0) {
-              current[idx].id = created.id;
+          const baserowData = formatBaserowPayload(appt);
+          try {
+            const created = await apiFetch(`/database/rows/table/${TABLE_ID}/?user_field_names=true`, {
+              method: "POST",
+              body: JSON.stringify(baserowData),
+            });
+            if (created && created.id) {
+              let current = loadLocalAppointments();
+              const idx = current.findIndex(a => String(a.id) === String(appt.id));
+              if (idx >= 0) {
+                current[idx].id = created.id;
+              }
+              markIdAsLocallyCreated(created.id);
+              markIdAsKnown(created.id);
+              saveLocalAppointments(current);
+              window.__appointments = current;
+              renderAppointments(current);
+              updateStats(current);
+              console.log("[syncPending] Rendez-vous synchronisé avec succès dans Baserow, nouvel ID:", created.id);
             }
-            markIdAsLocallyCreated(created.id);
-            markIdAsKnown(created.id);
-            saveLocalAppointments(current);
-            window.__appointments = current;
-            renderAppointments(current);
-            updateStats(current);
+          } catch (syncErr) {
+            console.warn("[syncPending] Erreur synchronisation fiche", appt.id, syncErr);
           }
         }
       } catch (e) {
@@ -2729,6 +2755,8 @@
       // Bouton synchroniser dans Baserow
       document.getElementById("btn-sync-baserow")?.addEventListener("click", async () => {
         playSound('click');
+        showToast("Envoi des fiches en attente vers Baserow...", "⏳");
+        await syncPendingLocalAppointments();
         await loadAndRender();
         showToast("Synchronisation Baserow terminée !", "🔄");
       });
@@ -3098,7 +3126,13 @@
       closeAppointmentAlert,
       notifyNewAppointmentFromOtherUser,
       triggerSystemNotification,
-      submitForm
+      submitForm,
+      syncNow: async () => {
+        showToast("Synchronisation forcée avec Baserow...", "⏳");
+        await syncPendingLocalAppointments();
+        await loadAndRender();
+        showToast("Synchronisation terminée !", "🔄");
+      }
     };
 
     window.app = app;
