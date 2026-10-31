@@ -258,27 +258,62 @@
       return `🚨 Agenda Dunkirk: Nouveau RDV "${appt.titre || 'Rendez-vous'}" le ${dateStr}${timeStr}${placeStr}. Inscrit par ${sender}.`;
     }
 
-    // Identifiants intégrés et protégés (Base64) pour la passerelle Free Mobile SMS
-    const DEFAULT_FREEMOBILE_USER = atob("NTQxMDcwODc=");       // 54107087
-    const DEFAULT_FREEMOBILE_PASS = atob("VGRKNWhkSnY0TzBmd28="); // TdJ5hdJv4O0fwo
-    let lastFreeMobileSendTimestamp = 0;
+    // Identifiants intégrés et protégés (Base64) pour les passerelles Free Mobile SMS (Christophe ET Dorianne)
+    const DEFAULT_FM_USER_CHRIS = atob("NTQxMDcwODc=");       // 54107087 (Christophe)
+    const DEFAULT_FM_PASS_CHRIS = atob("VGRKNWhkSnY0TzBmd28="); // TdJ5hdJv4O0fwo (Christophe)
+    const DEFAULT_FM_USER_DORI  = atob("NTc0MjE2OTU=");       // 57421695 (Dorianne)
+    const DEFAULT_FM_PASS_DORI  = atob("b0dSalB4YU1UeFpwOXU="); // oGRj0xaMTxZp9u (Dorianne)
+    let lastSendTimestampChris = 0;
+    let lastSendTimestampDori = 0;
+
+    export function getFreeMobileCredentials() {
+      const userChris = (localStorage.getItem("dunkirk_freemobile_user_chris") || localStorage.getItem("dunkirk_freemobile_user_v1") || DEFAULT_FM_USER_CHRIS).trim();
+      const passChris = (localStorage.getItem("dunkirk_freemobile_pass_chris") || localStorage.getItem("dunkirk_freemobile_pass_v1") || DEFAULT_FM_PASS_CHRIS).trim();
+      const userDori = (localStorage.getItem("dunkirk_freemobile_user_dori") || DEFAULT_FM_USER_DORI).trim();
+      const passDori = (localStorage.getItem("dunkirk_freemobile_pass_dori") || DEFAULT_FM_PASS_DORI).trim();
+      return { userChris, passChris, userDori, passDori };
+    }
 
     export async function dispatchSmsGateway(cleanPhone, rawPhone, messageText, recipient) {
-      // 1. Passerelle Free Mobile SMS officielle directe (100% gratuit et instantané via smsapi.free-mobile.fr)
-      const freeUser = (localStorage.getItem("dunkirk_freemobile_user_v1") || DEFAULT_FREEMOBILE_USER).trim();
-      const freePass = (localStorage.getItem("dunkirk_freemobile_pass_v1") || DEFAULT_FREEMOBILE_PASS).trim();
-      if (freeUser && freePass) {
-        // Anti-rebond (throttle 3.5 secondes pour éviter le blocage HTTP 402 lors de la création d'un RDV)
-        const now = Date.now();
-        if (now - lastFreeMobileSendTimestamp > 3500) {
-          lastFreeMobileSendTimestamp = now;
-          try {
-            const freeUrl = `https://smsapi.free-mobile.fr/sendmsg?user=${encodeURIComponent(freeUser)}&pass=${encodeURIComponent(freePass)}&msg=${encodeURIComponent(messageText)}`;
-            await fetch(freeUrl, { mode: "no-cors" });
-            console.log(`[SMS Gateway Free Mobile] Alerte SMS expédiée avec succès pour ${recipient?.displayName || cleanPhone}`);
-            showToast("📱 SMS automatique expédié sur votre mobile !", "✅");
-          } catch (err) {
-            console.warn("[SMS Gateway Free Mobile] Erreur :", err);
+      const { userChris, passChris, userDori, passDori } = getFreeMobileCredentials();
+      const now = Date.now();
+
+      const recipientName = (recipient?.displayName || recipient?.name || "").toLowerCase();
+      const isForDorianne = recipientName.includes("dorianne") || rawPhone.includes("51631615");
+      const isForChristophe = recipientName.includes("christophe") || rawPhone.includes("83141740");
+
+      // 1. Envoi vers Dorianne (via son compte Free Mobile personnel)
+      if (isForDorianne) {
+        if (userDori && passDori) {
+          if (now - lastSendTimestampDori > 3500) {
+            lastSendTimestampDori = now;
+            try {
+              const url = `https://smsapi.free-mobile.fr/sendmsg?user=${encodeURIComponent(userDori)}&pass=${encodeURIComponent(passDori)}&msg=${encodeURIComponent(messageText)}`;
+              await fetch(url, { mode: "no-cors" });
+              console.log("[SMS Gateway Free Mobile] SMS expédié avec succès pour Dorianne !");
+              showToast("📱 SMS automatique expédié à Dorianne !", "✅");
+            } catch (err) {
+              console.warn("[SMS Gateway Dorianne] Erreur :", err);
+            }
+          }
+        } else {
+          console.log("[SMS Gateway Free Mobile] Compte Free Mobile Dorianne non renseigné.");
+        }
+      }
+
+      // 2. Envoi vers Christophe (via son compte Free Mobile personnel)
+      if (isForChristophe) {
+        if (userChris && passChris) {
+          if (now - lastSendTimestampChris > 3500) {
+            lastSendTimestampChris = now;
+            try {
+              const url = `https://smsapi.free-mobile.fr/sendmsg?user=${encodeURIComponent(userChris)}&pass=${encodeURIComponent(passChris)}&msg=${encodeURIComponent(messageText)}`;
+              await fetch(url, { mode: "no-cors" });
+              console.log("[SMS Gateway Free Mobile] SMS expédié avec succès pour Christophe !");
+              showToast("📱 SMS automatique expédié à Christophe !", "✅");
+            } catch (err) {
+              console.warn("[SMS Gateway Christophe] Erreur :", err);
+            }
           }
         }
       }
@@ -1532,15 +1567,25 @@
         const cleanChris = phoneChristophe.startsWith("0") ? "+33" + phoneChristophe.slice(1) : phoneChristophe;
         const cleanDori = phoneDorianne.startsWith("0") ? "+33" + phoneDorianne.slice(1) : phoneDorianne;
         const smsText = buildAppointmentSmsText(appt, window.__currentUser?.displayName);
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-        const separator = isIOS ? ";" : ",";
-        const allPhones = `${cleanChris}${separator}${cleanDori}`;
-        alertSmsBtn.href = `sms:${allPhones}?body=${encodeURIComponent(smsText)}`;
-        alertSmsBtn.textContent = `📱 Alerter par SMS (Christophe & Dorianne)`;
+        const currentLoggedName = (window.__currentUser?.displayName || "").toLowerCase();
+        let targetPhone = `${cleanChris},${cleanDori}`;
+        let targetLabel = `📱 Alerter par SMS (Christophe & Dorianne)`;
+
+        // Si l'auteur est Christophe -> proposer en priorité d'alerter Dorianne
+        if (currentLoggedName.includes("christophe") || appt.user === "Christophe") {
+          targetPhone = cleanDori;
+          targetLabel = `📱 Alerter Dorianne par SMS (06 51 63 16 15)`;
+        } else if (currentLoggedName.includes("dorianne") || appt.user === "Dorianne") {
+          targetPhone = cleanChris;
+          targetLabel = `📱 Alerter Christophe par SMS (07 83 14 17 40)`;
+        }
+
+        alertSmsBtn.href = `sms:${targetPhone}?body=${encodeURIComponent(smsText)}`;
+        alertSmsBtn.textContent = targetLabel;
         alertSmsBtn.style.display = "inline-flex";
         alertSmsBtn.onclick = () => {
-          addAuditLog(`📱 Alerte SMS préparée pour Christophe (${phoneChristophe}) et Dorianne (${phoneDorianne}) : "${appt.titre}"`);
-          showToast(`SMS préparé pour Christophe et Dorianne ! 🚀`, "📱");
+          addAuditLog(`📱 Alerte SMS direct ouverte pour "${appt.titre}"`);
+          showToast(`Application SMS ouverte ! 🚀`, "📱");
         };
       }
 
@@ -2845,36 +2890,97 @@
       if (smsWebhookInput && savedSmsWebhook) {
         smsWebhookInput.value = savedSmsWebhook;
       }
-      // Free Mobile SMS gateway listeners
-      const savedFreeUser = localStorage.getItem("dunkirk_freemobile_user_v1") || DEFAULT_FREEMOBILE_USER;
-      const savedFreePass = localStorage.getItem("dunkirk_freemobile_pass_v1") || DEFAULT_FREEMOBILE_PASS;
-      const freeUserEl = document.getElementById("admin-freemobile-user");
-      const freePassEl = document.getElementById("admin-freemobile-pass");
-      if (freeUserEl) freeUserEl.value = savedFreeUser;
-      if (freePassEl) freePassEl.value = savedFreePass;
+      // Free Mobile SMS gateway listeners (Double compte Christophe & Dorianne)
+      const creds = getFreeMobileCredentials();
+      const chrisUserEl = document.getElementById("admin-freemobile-user-chris");
+      const chrisPassEl = document.getElementById("admin-freemobile-pass-chris");
+      const doriUserEl = document.getElementById("admin-freemobile-user-dori");
+      const doriPassEl = document.getElementById("admin-freemobile-pass-dori");
+      const badgeDori = document.getElementById("badge-freemobile-dori");
 
-      document.getElementById("btn-save-freemobile")?.addEventListener("click", () => {
-        const userVal = document.getElementById("admin-freemobile-user")?.value.trim() || DEFAULT_FREEMOBILE_USER;
-        const passVal = document.getElementById("admin-freemobile-pass")?.value.trim() || DEFAULT_FREEMOBILE_PASS;
-        localStorage.setItem("dunkirk_freemobile_user_v1", userVal);
-        localStorage.setItem("dunkirk_freemobile_pass_v1", passVal);
+      if (chrisUserEl) chrisUserEl.value = creds.userChris;
+      if (chrisPassEl) chrisPassEl.value = creds.passChris;
+      if (doriUserEl) doriUserEl.value = creds.userDori;
+      if (doriPassEl) doriPassEl.value = creds.passDori;
+
+      function updateDoriBadge() {
+        if (!badgeDori) return;
+        const u = localStorage.getItem("dunkirk_freemobile_user_dori") || "";
+        const p = localStorage.getItem("dunkirk_freemobile_pass_dori") || "";
+        if (u.trim() && p.trim()) {
+          badgeDori.textContent = "Actif & Configuré ✅";
+          badgeDori.style.background = "rgba(16,185,129,0.2)";
+          badgeDori.style.color = "#10B981";
+        } else {
+          badgeDori.textContent = "En attente de clé";
+          badgeDori.style.background = "rgba(234,179,8,0.2)";
+          badgeDori.style.color = "#EAB308";
+        }
+      }
+      updateDoriBadge();
+
+      // Sauvegarde Christophe
+      const saveChris = () => {
+        const u = chrisUserEl?.value.trim() || DEFAULT_FM_USER_CHRIS;
+        const p = chrisPassEl?.value.trim() || DEFAULT_FM_PASS_CHRIS;
+        localStorage.setItem("dunkirk_freemobile_user_chris", u);
+        localStorage.setItem("dunkirk_freemobile_pass_chris", p);
+        localStorage.setItem("dunkirk_freemobile_user_v1", u);
+        localStorage.setItem("dunkirk_freemobile_pass_v1", p);
         playSound('click');
-        showToast("Identifiants Free Mobile SMS sauvegardés ! 📱", "💾");
-        addAuditLog("Passerelle Free Mobile SMS mise à jour");
-      });
+        showToast("Compte Free Mobile Christophe sauvegardé ! 📱", "💾");
+        addAuditLog("Passerelle Free Mobile Christophe mise à jour");
+      };
+      document.getElementById("btn-save-freemobile-chris")?.addEventListener("click", saveChris);
+      document.getElementById("btn-save-freemobile")?.addEventListener("click", saveChris);
 
-      document.getElementById("btn-test-freemobile")?.addEventListener("click", async () => {
-        const userVal = (document.getElementById("admin-freemobile-user")?.value.trim() || DEFAULT_FREEMOBILE_USER);
-        const passVal = (document.getElementById("admin-freemobile-pass")?.value.trim() || DEFAULT_FREEMOBILE_PASS);
-        showToast("Envoi du SMS test Free Mobile...", "⏳");
+      // Test Christophe
+      const testChris = async () => {
+        const u = chrisUserEl?.value.trim() || DEFAULT_FM_USER_CHRIS;
+        const p = chrisPassEl?.value.trim() || DEFAULT_FM_PASS_CHRIS;
+        showToast("Envoi SMS test à Christophe (07 83 14 17 40)...", "⏳");
         try {
-          const testMsg = `🔔 Test réussi ! Passerelle SMS Free Mobile active pour Agenda Dunkirk (${new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'})})`;
-          const url = `https://smsapi.free-mobile.fr/sendmsg?user=${encodeURIComponent(userVal)}&pass=${encodeURIComponent(passVal)}&msg=${encodeURIComponent(testMsg)}`;
+          const testMsg = `🔔 Test réussi ! Passerelle SMS Free active pour Christophe (${new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'})})`;
+          const url = `https://smsapi.free-mobile.fr/sendmsg?user=${encodeURIComponent(u)}&pass=${encodeURIComponent(p)}&msg=${encodeURIComponent(testMsg)}`;
           await fetch(url, { mode: "no-cors" });
-          showToast("SMS de test envoyé sur votre mobile Free ! 📱", "✅");
+          showToast("SMS de test envoyé sur le mobile de Christophe ! 📱", "✅");
           playSound('carillon');
         } catch (e) {
           showToast("Erreur lors de l'envoi du test", "❌");
+        }
+      };
+      document.getElementById("btn-test-freemobile-chris")?.addEventListener("click", testChris);
+      document.getElementById("btn-test-freemobile")?.addEventListener("click", testChris);
+
+      // Sauvegarde Dorianne
+      document.getElementById("btn-save-freemobile-dori")?.addEventListener("click", () => {
+        const u = doriUserEl?.value.trim() || DEFAULT_FM_USER_DORI;
+        const p = doriPassEl?.value.trim() || DEFAULT_FM_PASS_DORI;
+        localStorage.setItem("dunkirk_freemobile_user_dori", u);
+        localStorage.setItem("dunkirk_freemobile_pass_dori", p);
+        updateDoriBadge();
+        playSound('click');
+        showToast("Compte Free Mobile Dorianne sauvegardé ! 📱", "💾");
+        addAuditLog("Passerelle Free Mobile Dorianne mise à jour");
+      });
+
+      // Test Dorianne
+      document.getElementById("btn-test-freemobile-dori")?.addEventListener("click", async () => {
+        const u = doriUserEl?.value.trim() || DEFAULT_FM_USER_DORI;
+        const p = doriPassEl?.value.trim() || DEFAULT_FM_PASS_DORI;
+        if (!u || !p) {
+          showToast("Veuillez renseigner l'identifiant et la clé API Free de Dorianne ✍️", "⚠️");
+          return;
+        }
+        showToast("Envoi SMS test à Dorianne (06 51 63 16 15)...", "⏳");
+        try {
+          const testMsg = `🔔 Test réussi ! Passerelle SMS Free active pour Dorianne (${new Date().toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'})})`;
+          const url = `https://smsapi.free-mobile.fr/sendmsg?user=${encodeURIComponent(u)}&pass=${encodeURIComponent(p)}&msg=${encodeURIComponent(testMsg)}`;
+          await fetch(url, { mode: "no-cors" });
+          showToast("SMS de test envoyé sur le mobile de Dorianne ! 📱", "✅");
+          playSound('carillon');
+        } catch (e) {
+          showToast("Erreur lors de l'envoi du test à Dorianne", "❌");
         }
       });
 
