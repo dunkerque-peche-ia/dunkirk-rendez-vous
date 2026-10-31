@@ -9,3 +9,4 @@ with open('funcs_notif.txt', 'w', encoding='utf-8') as out:
             out.write(c[idx:idx+1500])
         else:
             out.write(f"\n\n==================== {kw} NOT FOUND ====================\n")
+
