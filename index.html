@@ -4350,6 +4350,20 @@
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <!-- Application JS -->
   <script type="module">
+    // Initialisation anticipée de window.app pour garantir que tous les boutons fonctionnent immédiatement
+    window.app = window.app || {
+      switchTab: (name) => {
+        document.querySelectorAll(".tab-view").forEach(el => el.classList.remove("active"));
+        document.getElementById("view-" + name)?.classList.add("active");
+        document.querySelectorAll(".nav-item").forEach(el => el.classList.remove("active"));
+        document.querySelector(".nav-item[data-tab='" + name + "']")?.classList.add("active");
+      },
+      openNewAppointmentForm: () => {
+        window.app.switchTab("new");
+      },
+      syncNow: () => {}
+    };
+
     // app.js – Logique enrichie & fun Dunkirk RDV & Guidage (Look Dunkirk Informatique)
     const BASEROW_BASE_URL = "https://baserow.fr.nocodespacelab.com/api";
     const BASEROW_TOKEN = "lgWHdzUYXFcvB3A7sbzXWPl337c7qlEY";
@@ -5874,25 +5888,23 @@
     export function generateIcsCalendar(appt) {
       if (!appt || !appt.date || !appt.heure) return null;
       try {
-        const dateClean = appt.date.replace(/-/g, ""); // "20261109"
-        const [h, m] = (appt.heure || "12:00").split(":").map(s => s.padStart(2, "0"));
-        const startStr = `${dateClean}T${h}${m}00`;
+        const dateClean = String(appt.date).replace(/-/g, "");
+        const [h, m] = String(appt.heure || "12:00").split(":").map(s => s.padStart(2, "0"));
+        const startStr = dateClean + "T" + h + m + "00";
         
         let endH = (parseInt(h, 10) + 1);
         const endHStr = String(endH >= 24 ? 23 : endH).padStart(2, "0");
-        const endStr = `${dateClean}T${endHStr}${m}00`;
+        const endStr = dateClean + "T" + endHStr + m + "00";
 
         const lead = parseInt(appt.alerte_minutes, 10) || 30;
-        const title = (appt.titre || "Rendez-vous").replace(/[,
-;]/g, " ");
-        const user = appt.user || "Agenda";
-        const location = (appt.adresse || "Dunkerque").replace(/[,
-;]/g, " ");
-        const contact = appt.contact ? `Contact: ${appt.contact}` : "";
-        const phone = appt.telephone ? `Tél: ${appt.telephone}` : "";
-        const notes = appt.notes ? `Notes: ${appt.notes}` : "";
-        const desc = `Rendez-vous pour ${user}. ${contact} ${phone} ${notes}`.trim().replace(/\n/g, "\\n");
-        const uid = `rdv-${appt.id || Date.now()}-${Date.now()}@dunkirk-rdv.vercel.app`;
+        const cleanTitle = String(appt.titre || "Rendez-vous").replace(/[,;]/g, " ").replace(/[\r\n]+/g, " ");
+        const cleanUser = String(appt.user || "Agenda");
+        const cleanLocation = String(appt.adresse || "Dunkerque").replace(/[,;]/g, " ").replace(/[\r\n]+/g, " ");
+        const contact = appt.contact ? ("Contact: " + appt.contact) : "";
+        const phone = appt.telephone ? ("Tel: " + appt.telephone) : "";
+        const notes = appt.notes ? ("Notes: " + appt.notes) : "";
+        const desc = [("Rendez-vous pour " + cleanUser), contact, phone, notes].filter(Boolean).join(" - ").replace(/[\r\n]+/g, " ");
+        const uid = "rdv-" + (appt.id || Date.now()) + "-" + Date.now() + "@dunkirk-rdv.vercel.app";
         const nowStamp = new Date().toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
 
         const icsLines = [
@@ -5902,18 +5914,18 @@
           "CALSCALE:GREGORIAN",
           "METHOD:PUBLISH",
           "BEGIN:VEVENT",
-          `UID:${uid}`,
-          `DTSTAMP:${nowStamp}`,
-          `DTSTART:${startStr}`,
-          `DTEND:${endStr}`,
-          `SUMMARY:📅 ${title} (${user})`,
-          `DESCRIPTION:${desc}`,
-          `LOCATION:${location}`,
+          "UID:" + uid,
+          "DTSTAMP:" + nowStamp,
+          "DTSTART:" + startStr,
+          "DTEND:" + endStr,
+          "SUMMARY:" + cleanTitle + " (" + cleanUser + ")",
+          "DESCRIPTION:" + desc,
+          "LOCATION:" + cleanLocation,
           "STATUS:CONFIRMED",
           "BEGIN:VALARM",
-          `TRIGGER:-PT${lead}M`,
+          "TRIGGER:-PT" + lead + "M",
           "ACTION:DISPLAY",
-          `DESCRIPTION:🔔 Rappel Dunkirk RDV : ${title} dans ${lead} min !`,
+          "DESCRIPTION:Rappel Rendez-vous Dunkirk : " + cleanTitle + " dans " + lead + " min !",
           "END:VALARM",
           "END:VEVENT",
           "END:VCALENDAR"
@@ -5939,8 +5951,8 @@
         }
 
         const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
-        const cleanTitle = (appt.titre || "rendez_vous").toLowerCase().replace(/[^a-z0-9]/g, "_");
-        const fileName = `rdv_${cleanTitle}.ics`;
+        const safeTitle = (appt.titre || "rendez_vous").toLowerCase().replace(/[^a-z0-9]/g, "_");
+        const fileName = "rdv_" + safeTitle + ".ics";
 
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
@@ -5953,8 +5965,8 @@
 
         playSound('carillon');
         const lead = appt.alerte_minutes || 30;
-        showToast(`📅 Événement ouvert ! Votre smartphone sonnera ${lead} min avant.`, "✅");
-        addAuditLog(`📅 Événement calendrier généré pour "${appt.titre}" (-${lead}min)`);
+        showToast("📅 Événement ouvert ! Votre smartphone sonnera " + lead + " min avant.", "✅");
+        addAuditLog("📅 Événement calendrier généré pour " + appt.titre + " (-" + lead + "min)");
       } catch (err) {
         console.error("Erreur ouverture calendrier:", err);
         showToast("Erreur lors de l'ouverture du calendrier", "❌");
