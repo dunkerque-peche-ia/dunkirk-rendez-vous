@@ -1138,6 +1138,9 @@
       <button class="btn-card-action btn-action-guide" title="Lancer le guidage GPS">
         🧭 Guidage
       </button>
+      <button class="btn-card-action btn-action-calendar" title="Ajouter à l'agenda natif avec alarme 30 min">
+        📅 Agenda
+      </button>
       <button class="btn-card-action btn-depart" title="Départ immédiat !">
         🚗 Départ !
       </button>
@@ -1155,6 +1158,12 @@
         e.stopPropagation();
         playSound('cyber');
         selectAndGuide(appt);
+      });
+
+      // Action rapide : Ajouter à l'agenda natif avec alerte
+      card.querySelector(".btn-action-calendar")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        addToNativeCalendar(appt);
       });
 
       // Action rapide : Départ !
@@ -1354,6 +1363,16 @@
               minDiff = diffMinutes;
               mostUrgent = a;
             }
+
+            // Alerte système sonore et vibration
+            const notifKey = `notif_imminent_${a.id}_${a.date}_${lead}`;
+            if (!localStorage.getItem(notifKey)) {
+              localStorage.setItem(notifKey, "1");
+              triggerSystemNotification(
+                `🚨 Rappel Départ : ${a.titre}`,
+                `Rendez-vous pour ${a.user} à ${a.heure} (dans ${diffMinutes} min). Lieu : ${a.adresse || 'Dunkerque'}`
+              );
+            }
           }
         });
       }
@@ -1496,9 +1515,104 @@
       }
     }
 
+        // =============================================================
+    // SYNCHRONISATION AGENDA NATIF SMARTPHONE (.ICS / GOOGLE / APPLE)
+    // Permet au téléphone de sonner et vibrer 30 min avant, même application fermée !
+    // =============================================================
+    export function generateIcsCalendar(appt) {
+      if (!appt || !appt.date || !appt.heure) return null;
+      try {
+        const dateClean = appt.date.replace(/-/g, ""); // "20261109"
+        const [h, m] = (appt.heure || "12:00").split(":").map(s => s.padStart(2, "0"));
+        const startStr = `${dateClean}T${h}${m}00`;
+        
+        let endH = (parseInt(h, 10) + 1);
+        const endHStr = String(endH >= 24 ? 23 : endH).padStart(2, "0");
+        const endStr = `${dateClean}T${endHStr}${m}00`;
+
+        const lead = parseInt(appt.alerte_minutes, 10) || 30;
+        const title = (appt.titre || "Rendez-vous").replace(/[,
+;]/g, " ");
+        const user = appt.user || "Agenda";
+        const location = (appt.adresse || "Dunkerque").replace(/[,
+;]/g, " ");
+        const contact = appt.contact ? `Contact: ${appt.contact}` : "";
+        const phone = appt.telephone ? `Tél: ${appt.telephone}` : "";
+        const notes = appt.notes ? `Notes: ${appt.notes}` : "";
+        const desc = `Rendez-vous pour ${user}. ${contact} ${phone} ${notes}`.trim().replace(/\n/g, "\\n");
+        const uid = `rdv-${appt.id || Date.now()}-${Date.now()}@dunkirk-rdv.vercel.app`;
+        const nowStamp = new Date().toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+
+        const icsLines = [
+          "BEGIN:VCALENDAR",
+          "VERSION:2.0",
+          "PRODID:-//Dunkirk RDV Mobile//FR",
+          "CALSCALE:GREGORIAN",
+          "METHOD:PUBLISH",
+          "BEGIN:VEVENT",
+          `UID:${uid}`,
+          `DTSTAMP:${nowStamp}`,
+          `DTSTART:${startStr}`,
+          `DTEND:${endStr}`,
+          `SUMMARY:📅 ${title} (${user})`,
+          `DESCRIPTION:${desc}`,
+          `LOCATION:${location}`,
+          "STATUS:CONFIRMED",
+          "BEGIN:VALARM",
+          `TRIGGER:-PT${lead}M`,
+          "ACTION:DISPLAY",
+          `DESCRIPTION:🔔 Rappel Dunkirk RDV : ${title} dans ${lead} min !`,
+          "END:VALARM",
+          "END:VEVENT",
+          "END:VCALENDAR"
+        ];
+
+        return icsLines.join("\r\n");
+      } catch (err) {
+        console.error("Erreur generation ICS:", err);
+        return null;
+      }
+    }
+
+    export function addToNativeCalendar(appt) {
+      if (!appt) {
+        showToast("Aucun rendez-vous sélectionné", "⚠️");
+        return;
+      }
+      try {
+        const icsContent = generateIcsCalendar(appt);
+        if (!icsContent) {
+          showToast("Données insuffisantes pour l'agenda", "⚠️");
+          return;
+        }
+
+        const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
+        const cleanTitle = (appt.titre || "rendez_vous").toLowerCase().replace(/[^a-z0-9]/g, "_");
+        const fileName = `rdv_${cleanTitle}.ics`;
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 3000);
+
+        playSound('carillon');
+        const lead = appt.alerte_minutes || 30;
+        showToast(`📅 Événement ouvert ! Votre smartphone sonnera ${lead} min avant.`, "✅");
+        addAuditLog(`📅 Événement calendrier généré pour "${appt.titre}" (-${lead}min)`);
+      } catch (err) {
+        console.error("Erreur ouverture calendrier:", err);
+        showToast("Erreur lors de l'ouverture du calendrier", "❌");
+      }
+    }
+
     export function showAppointmentAlert(appt, isNew = true, isFromOtherUser = false) {
       const modal = document.getElementById("new-rdv-alert-modal");
       if (!modal) return;
+      window.__lastAlertAppointment = appt;
 
       const headingEl = modal.querySelector(".alert-modal-heading");
       if (headingEl) {
@@ -2665,6 +2779,26 @@
         }
       });
 
+      // Bouton Calendrier dans modal d'alerte nouveau RDV
+      document.getElementById("alert-modal-btn-calendar")?.addEventListener("click", () => {
+        const target = window.__lastAlertAppointment || window.__selectedAppointment;
+        if (target) {
+          addToNativeCalendar(target);
+        } else {
+          showToast("Rendez-vous introuvable", "⚠️");
+        }
+      });
+
+      // Bouton Calendrier dans modal détails RDV
+      document.getElementById("modal-btn-calendar")?.addEventListener("click", () => {
+        const target = window.__selectedAppointment;
+        if (target) {
+          addToNativeCalendar(target);
+        } else {
+          showToast("Rendez-vous introuvable", "⚠️");
+        }
+      });
+
       // Activation des notifications système Web / Mobile
       const btnReqNotif = document.getElementById("btn-request-notifications");
       if (btnReqNotif) {
@@ -3274,6 +3408,7 @@
       closeAppointmentAlert,
       notifyNewAppointmentFromOtherUser,
       triggerSystemNotification,
+      addToNativeCalendar,
       submitForm,
       syncNow: async () => {
         showToast("Synchronisation forcée avec Baserow...", "⏳");
