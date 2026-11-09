@@ -1,5 +1,5 @@
 // Service Worker pour Dunkirk RDV Mobile
-const CACHE_NAME = 'dunkirk-rdv-v9';
+const CACHE_NAME = 'dunkirk-rdv-v10';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -29,11 +29,12 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Ne pas cacher les requêtes externes API Baserow / Geocoding
+  // Ne pas cacher les requêtes externes API Baserow / Geocoding / Free Mobile
   if (event.request.url.includes('baserow') || 
       event.request.url.includes('api-adresse.data.gouv.fr') || 
       event.request.url.includes('nominatim') ||
-      event.request.url.includes('osrm')) {
+      event.request.url.includes('osrm') ||
+      event.request.url.includes('smsapi.free-mobile.fr')) {
     return;
   }
   

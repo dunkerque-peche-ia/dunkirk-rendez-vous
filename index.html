@@ -4628,15 +4628,33 @@
     const DEFAULT_FM_USER_CHRIS = atob("NTQxMDcwODc=");       // 54107087 (Christophe)
     const DEFAULT_FM_PASS_CHRIS = atob("VGRKNWhkSnY0TzBmd28="); // TdJ5hdJv4O0fwo (Christophe)
     const DEFAULT_FM_USER_DORI  = atob("NTc0MjE2OTU=");       // 57421695 (Dorianne)
-    const DEFAULT_FM_PASS_DORI  = atob("b0dSalB4YU1UeFpwOXU="); // oGRj0xaMTxZp9u (Dorianne)
+    const DEFAULT_FM_PASS_DORI  = atob("b0dSajB4YU1UeFpwOXU="); // oGRj0xaMTxZp9u (Dorianne - Clé API officielle avec '0' vérifiée HTTP 200)
     let lastSendTimestampChris = 0;
     let lastSendTimestampDori = 0;
 
     export function getFreeMobileCredentials() {
-      const userChris = (localStorage.getItem("dunkirk_freemobile_user_chris") || localStorage.getItem("dunkirk_freemobile_user_v1") || DEFAULT_FM_USER_CHRIS).trim();
-      const passChris = (localStorage.getItem("dunkirk_freemobile_pass_chris") || localStorage.getItem("dunkirk_freemobile_pass_v1") || DEFAULT_FM_PASS_CHRIS).trim();
-      const userDori = (localStorage.getItem("dunkirk_freemobile_user_dori") || DEFAULT_FM_USER_DORI).trim();
-      const passDori = (localStorage.getItem("dunkirk_freemobile_pass_dori") || DEFAULT_FM_PASS_DORI).trim();
+      let userChris = (localStorage.getItem("dunkirk_freemobile_user_chris") || localStorage.getItem("dunkirk_freemobile_user_v1") || DEFAULT_FM_USER_CHRIS).trim();
+      let passChris = (localStorage.getItem("dunkirk_freemobile_pass_chris") || localStorage.getItem("dunkirk_freemobile_pass_v1") || DEFAULT_FM_PASS_CHRIS).trim();
+      let userDori = (localStorage.getItem("dunkirk_freemobile_user_dori") || DEFAULT_FM_USER_DORI).trim();
+      let passDori = (localStorage.getItem("dunkirk_freemobile_pass_dori") || DEFAULT_FM_PASS_DORI).trim();
+
+      // Nettoyage automatique si une clé corrompue ou obsolète était en cache localStorage
+      if (passDori === "oGRjPxaMTxZp9u" || !passDori) {
+        passDori = DEFAULT_FM_PASS_DORI;
+        localStorage.setItem("dunkirk_freemobile_pass_dori", passDori);
+      }
+      if (!userDori) {
+        userDori = DEFAULT_FM_USER_DORI;
+        localStorage.setItem("dunkirk_freemobile_user_dori", userDori);
+      }
+      if (!userChris) {
+        userChris = DEFAULT_FM_USER_CHRIS;
+        localStorage.setItem("dunkirk_freemobile_user_chris", userChris);
+      }
+      if (!passChris) {
+        passChris = DEFAULT_FM_PASS_CHRIS;
+        localStorage.setItem("dunkirk_freemobile_pass_chris", passChris);
+      }
       return { userChris, passChris, userDori, passDori };
     }
 
@@ -4645,8 +4663,9 @@
       const now = Date.now();
 
       const recipientName = (recipient?.displayName || recipient?.name || "").toLowerCase();
-      const isForDorianne = recipientName.includes("dorianne") || rawPhone.includes("51631615");
-      const isForChristophe = recipientName.includes("christophe") || rawPhone.includes("83141740");
+      const rawP = String(rawPhone || "").replace(/\s+/g, "");
+      const isForDorianne = recipientName.includes("dorianne") || rawP.includes("51631615") || rawP.includes("0651631615");
+      const isForChristophe = recipientName.includes("christophe") || rawP.includes("83141740") || rawP.includes("0783141740");
 
       // 1. Envoi vers Dorianne (via son compte Free Mobile personnel)
       if (isForDorianne) {
@@ -5474,10 +5493,7 @@
       const userEmoji = appt.user === "Dorianne" ? "👩" : (appt.user === "Christophe" ? "👨" : "👫");
       const userBadgeClass = appt.user === "Dorianne" ? "dorianne" : (appt.user === "Christophe" ? "christophe" : "");
 
-      const isTempId = !appt.id || Number(appt.id) > 100000 || isNaN(Number(appt.id));
-      const idBadge = isTempId
-        ? `<span class="badge-sync-pending" onclick="event.stopPropagation(); app.syncNow();" title="Cliquez pour forcer la synchronisation avec Baserow" style="cursor:pointer; font-size:0.68rem; background:rgba(221,167,39,0.18); color:var(--dk-gold); border:1px solid rgba(221,167,39,0.4); border-radius:12px; padding:0.15rem 0.5rem; font-weight:700;">⏳ Synchro...</span>`
-        : `<span style="font-size:0.75rem; color:#94A3B8; font-weight:700;">#${appt.id}</span>`;
+      const idBadge = `<span style="font-size:0.75rem; color:#94A3B8; font-weight:700;">#${appt.id}</span>`;
 
       card.innerHTML = `
     <div class="card-top-row">
@@ -6116,8 +6132,7 @@
 
       const userEmoji = appt.user === "Dorianne" ? "👩" : (appt.user === "Christophe" ? "👨" : "👫");
       const userBadgeClass = appt.user === "Dorianne" ? "dorianne" : (appt.user === "Christophe" ? "christophe" : "");
-      const isApptTemp = !appt.id || Number(appt.id) > 100000 || isNaN(Number(appt.id));
-      const idLabel = isApptTemp ? " (⏳ En attente de synchro Baserow)" : ` (Fiche #${appt.id})`;
+      const idLabel = ` (Fiche #${appt.id})`;
       userBadge.textContent = `${userEmoji} ${appt.user}${idLabel}`;
       userBadge.className = `user-mini-badge ${userBadgeClass}`;
       catBadge.textContent = appt.categorie || "Déplacement";
@@ -6316,7 +6331,14 @@
         return;
       }
 
+      const saveBtn = document.getElementById("btn-save-rdv");
+      const originalBtnText = saveBtn ? saveBtn.innerHTML : "Enregistrer le rendez-vous";
+      
       isFormSubmittingLock = true;
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = "⏳ Enregistrement dans Baserow...";
+      }
 
       try {
         const id = (document.getElementById("edit-rdv-id")?.value || "").trim();
@@ -6352,43 +6374,32 @@
         const baserowData = formatBaserowPayload(data);
 
         let finalId = null;
-        let baserowSuccess = false;
 
-        // === ÉTAPE 1 : ENVOI DIRECT DANS BASEROW (PRIORITÉ ABSOLUE) ===
+        // === ENREGISTREMENT DIRECT ET RÉEL DANS BASEROW (AUCUN MODE SYNCHO FICTIF) ===
         if (!id) {
-          try {
-            const created = await apiFetch(`/database/rows/table/${TABLE_ID}/?user_field_names=true`, {
-              method: "POST",
-              body: JSON.stringify(baserowData),
-            });
-            if (created && created.id) {
-              finalId = created.id;
-              baserowSuccess = true;
-              markIdAsLocallyCreated(created.id);
-              markIdAsKnown(created.id);
-              console.log("[submitForm] Enregistré avec succès dans Baserow Table 1246, ID:", created.id);
-            }
-          } catch (baserowErr) {
-            console.warn("[submitForm] Erreur réseau Baserow, passage en temporaire :", baserowErr);
+          // Création dans Baserow Table 1246
+          const created = await apiFetch(`/database/rows/table/${TABLE_ID}/?user_field_names=true`, {
+            method: "POST",
+            body: JSON.stringify(baserowData),
+          });
+
+          if (!created || !created.id) {
+            throw new Error("Baserow n'a pas retourné d'identifiant valide pour ce rendez-vous.");
           }
-          if (!finalId) {
-            finalId = Date.now();
-          }
+
+          finalId = created.id;
+          console.log("[submitForm] Rendez-vous enregistré avec succès dans Baserow Table 1246, ID:", finalId);
         } else {
-          try {
-            await apiFetch(`/database/rows/table/${TABLE_ID}/${id}/?user_field_names=true`, {
-              method: "PATCH",
-              body: JSON.stringify(baserowData),
-            });
-            finalId = id;
-            baserowSuccess = true;
-          } catch (baserowErr) {
-            console.warn("[submitForm] Erreur PATCH Baserow :", baserowErr);
-            finalId = id;
-          }
+          // Modification dans Baserow Table 1246
+          await apiFetch(`/database/rows/table/${TABLE_ID}/${id}/?user_field_names=true`, {
+            method: "PATCH",
+            body: JSON.stringify(baserowData),
+          });
+          finalId = id;
+          console.log("[submitForm] Rendez-vous #" + id + " modifié avec succès dans Baserow Table 1246");
         }
 
-        // === ÉTAPE 2 : SAUVEGARDE LOCALE AVEC LE VRAI ID BASEROW ===
+        // === SAUVEGARDE LOCALE AVEC LE VRAI ID DÉFINITIF BASEROW ===
         let local = loadLocalAppointments();
         if (id) {
           const idx = local.findIndex(a => String(a.id) === String(id));
@@ -6405,7 +6416,7 @@
         saveLocalAppointments(local);
         window.__appointments = local;
 
-        // Réinitialiser les filtres du planning pour afficher immédiatement le rendez-vous créé
+        // Réinitialiser les filtres pour afficher le RDV créé
         currentFilterUser = "all";
         currentFilterCategory = "all";
         currentSearchQuery = "";
@@ -6421,22 +6432,18 @@
 
         renderAppointments(local);
         updateStats(local);
-        checkCloudStatus(baserowSuccess);
+        checkCloudStatus(true);
 
         playSound('carillon');
         launchConfetti();
 
-        // Message de confirmation clair lors de l'ajout
-        if (baserowSuccess) {
-          showToast(id ? "Rendez-vous modifié avec succès !" : `Rendez-vous enregistré dans Baserow ! (#${finalId})`, "✅");
-        } else {
-          showToast(id ? "Rendez-vous modifié avec succès !" : "Rendez-vous ajouté avec succès !", "✅");
-        }
+        // Confirmation utilisateur
+        showToast(id ? "Rendez-vous modifié avec succès !" : `Rendez-vous ajouté avec succès ! (#${finalId})`, "✅");
 
         markIdAsLocallyCreated(finalId);
         markIdAsKnown(finalId);
 
-        // Avertissement par SMS automatique pour les utilisateurs (Table Baserow 1273)
+        // Avertissement par SMS automatique garanti pour Dorianne et Christophe
         if (!id) {
           try {
             triggerAppointmentSmsNotification(targetAppt, true);
@@ -6445,7 +6452,7 @@
           }
         }
 
-        // Informer instantanément les autres fenêtres / onglets
+        // Synchronisation temps réel inter-onglets
         if (syncChannel) {
           syncChannel.postMessage({
             type: 'NEW_APPOINTMENT_ADDED',
@@ -6457,20 +6464,30 @@
         resetForm();
         app.switchTab("planning");
 
-        // Afficher la modal d'alerte pour confirmer l'ajout / modification
+        // Modal d'alerte de confirmation
         setTimeout(() => {
           try {
             showAppointmentAlert(targetAppt, !id, false);
           } catch (err) {
             console.warn("Erreur affichage modal alerte:", err);
           }
-        }, 400);
+        }, 350);
 
-      } catch (fatalErr) {
-        console.error("Erreur générale enregistrement RDV:", fatalErr);
-        showToast("Erreur inattendue lors de l'enregistrement", "❌");
+      } catch (err) {
+        console.error("Erreur enregistrement dans Baserow :", err);
+        const errDetail = err?.message || "Erreur de connexion";
+        showToast(`❌ Erreur Baserow : ${errDetail}`, "⚠️");
+        alert(`Échec de l'enregistrement dans Baserow :
+
+${errDetail}
+
+Le rendez-vous n'a pas été enregistré. Vos saisies restent dans le formulaire pour que vous puissiez réessayer.`);
       } finally {
-        setTimeout(() => { isFormSubmittingLock = false; }, 400);
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.innerHTML = originalBtnText;
+        }
+        setTimeout(() => { isFormSubmittingLock = false; }, 300);
       }
     }
 
