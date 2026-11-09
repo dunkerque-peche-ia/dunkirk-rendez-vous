@@ -5401,20 +5401,17 @@
 
     function formatBaserowPayload(data) {
       // Nettoyage strict et sécurisé des données numériques et textuelles pour Baserow Table 1246
-      let lat = null;
+      // RÈGLE BASEROW : Latitude et Longitude acceptent STRICTEMENT 6 décimales max (erreur 400 max_decimal_places sinon)
+      let lat = 51.0343;
       if (data.latitude !== undefined && data.latitude !== null && data.latitude !== "") {
         const parsedLat = parseFloat(String(data.latitude).replace(",", "."));
-        lat = isNaN(parsedLat) ? 51.0343 : parsedLat;
-      } else {
-        lat = 51.0343;
+        lat = isNaN(parsedLat) ? 51.0343 : Math.round(parsedLat * 1000000) / 1000000;
       }
 
-      let lon = null;
+      let lon = 2.3768;
       if (data.longitude !== undefined && data.longitude !== null && data.longitude !== "") {
         const parsedLon = parseFloat(String(data.longitude).replace(",", "."));
-        lon = isNaN(parsedLon) ? 2.3768 : parsedLon;
-      } else {
-        lon = 2.3768;
+        lon = isNaN(parsedLon) ? 2.3768 : Math.round(parsedLon * 1000000) / 1000000;
       }
 
       let alerte = 30;
@@ -6733,8 +6730,8 @@ Le rendez-vous n'a pas été enregistré. Vos saisies restent dans le formulaire
                 item.addEventListener("click", () => {
                   input.value = s.fullAddress;
                   if (s.lat && s.lon) {
-                    document.getElementById("rdv-lat").value = s.lat;
-                    document.getElementById("rdv-lon").value = s.lon;
+                    document.getElementById("rdv-lat").value = Math.round(parseFloat(s.lat) * 1000000) / 1000000;
+                    document.getElementById("rdv-lon").value = Math.round(parseFloat(s.lon) * 1000000) / 1000000;
                   } else {
                     // Géocodage de secours automatique pour les entreprises si nécessaire
                     geocodeAddressFallback(s.subtitle || s.fullAddress);
@@ -6787,8 +6784,8 @@ Le rendez-vous n'a pas été enregistré. Vos saisies restent dans le formulaire
           }
           posBtn.textContent = "📍 Recherche...";
           navigator.geolocation.getCurrentPosition((pos) => {
-            document.getElementById("rdv-lat").value = pos.coords.latitude;
-            document.getElementById("rdv-lon").value = pos.coords.longitude;
+            document.getElementById("rdv-lat").value = Math.round(pos.coords.latitude * 1000000) / 1000000;
+            document.getElementById("rdv-lon").value = Math.round(pos.coords.longitude * 1000000) / 1000000;
             input.value = "Position actuelle (Dunkerque & Flandres)";
             posBtn.textContent = "📍 Ma position actuelle";
             playSound('click');
@@ -6810,8 +6807,8 @@ Le rendez-vous n'a pas été enregistré. Vos saisies restent dans le formulaire
           const data = await r.json();
           const first = data.features?.[0];
           if (first && first.geometry?.coordinates) {
-            document.getElementById("rdv-lat").value = first.geometry.coordinates[1];
-            document.getElementById("rdv-lon").value = first.geometry.coordinates[0];
+            document.getElementById("rdv-lat").value = Math.round(first.geometry.coordinates[1] * 1000000) / 1000000;
+            document.getElementById("rdv-lon").value = Math.round(first.geometry.coordinates[0] * 1000000) / 1000000;
           }
         }
       } catch (e) { }
